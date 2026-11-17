@@ -66,6 +66,27 @@ The Cmd/Ctrl+K palette loads Pagefind (`/pagefind/pagefind.js`) the first time i
 article of a docs page is indexed (`data-pagefind-body`), under its group name. In `astro dev` there is
 no index, and the palette says so.
 
+## Install scripts
+
+`public/install.sh` (Linux and macOS) and `public/install.ps1` (Windows) are served at `/install.sh` and
+`/install.ps1`, as plain text (`public/_headers`). The home page leads with them:
+
+```bash
+curl -fsSL https://berthy.pages.dev/install.sh | sh
+```
+
+```powershell
+irm https://berthy.pages.dev/install.ps1 | iex
+```
+
+Each downloads `berthy-<os>-<arch>` and `checksums.txt` from the latest release of the berthy repository,
+stops when the hash does not match, and installs the binary: `/usr/local/bin/berthy` (with `sudo` when
+needed), or `%LOCALAPPDATA%\Programs\berthy\berthy.exe`, whose folder is added to the user PATH. Neither
+names a version, so a new release needs no change here. The settings (`BERTHY_VERSION`,
+`BERTHY_INSTALL_DIR`, `BERTHY_RELEASE_URL`, and `BERTHY_NO_MODIFY_PATH` on Windows) are listed at the top
+of each script. The scripts name `berthy.pages.dev` in their comments and messages; change it there too if
+a custom domain replaces it. `.gitattributes` keeps `install.sh` on LF line endings.
+
 ## Deploying: Cloudflare Pages
 
 `.github/workflows/site.yml` checks and builds on every push and pull request, and on a daily schedule

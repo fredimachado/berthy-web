@@ -8,6 +8,7 @@ import Badge from '../components/Badge.astro';
 import Card from '../components/Card.astro';
 import FeatureCard from '../components/FeatureCard.astro';
 import CopyCommand from '../components/CopyCommand.astro';
+import Tabs from '../components/Tabs.astro';
 import Terminal, { type TerminalLine } from '../components/Terminal.astro';
 import HowItWorks from '../components/HowItWorks.astro';
 import ComparisonTable, { type Column, type Row } from '../components/ComparisonTable.astro';
@@ -15,6 +16,9 @@ import Icon from '../components/Icon.astro';
 import { SITE } from '../lib/site.ts';
 
 const readme = `${SITE.repo}/blob/main/README.md`;
+// The install scripts are this site's own files: public/install.sh and public/install.ps1.
+const installSh = new URL('/install.sh', Astro.site).href;
+const installPs1 = new URL('/install.ps1', Astro.site).href;
 
 const deploy: TerminalLine[] = [
   { kind: 'cmd', text: 'berthy deploy -e prod --config $CFG --version sha256:<64 hex characters>' },
@@ -117,8 +121,8 @@ const features = [
 const steps = [
   [
     'Install the CLI',
-    'from the release: download a binary, check it against checksums.txt, put it on your PATH.',
-    `${readme}#quick-start`,
+    'with the install script: it downloads the release binary, checks it against checksums.txt and puts it on your PATH.',
+    '/#install',
   ],
   [
     'Set up the server',
@@ -295,18 +299,39 @@ const plain = (text: string) => text.replace(/`/g, '');
         GitHub
       </Button>
     </div>
-    <div class="mx-auto mt-10 max-w-3xl text-left">
-      <CopyCommand
-        wrap
-        command={`gh release download ${SITE.release} -R fredimachado/berthy -p 'berthy-linux-amd64' -p checksums.txt`}
-      />
+    <div id="install" class="mx-auto mt-10 max-w-3xl scroll-mt-24 text-left">
+      <Tabs
+        id="install-os"
+        group="os"
+        label="Operating system"
+        tabs={[
+          { id: 'unix', label: 'macOS and Linux' },
+          { id: 'win', label: 'Windows' },
+        ]}
+      >
+        <Fragment slot="unix">
+          <CopyCommand wrap command={`curl -fsSL ${installSh} | sh`} />
+        </Fragment>
+        <Fragment slot="win">
+          <CopyCommand wrap prompt=">" command={`irm ${installPs1} | iex`} />
+        </Fragment>
+      </Tabs>
       <p class="mt-3 text-sm text-fg-muted">
-        Linux amd64 shown. Binaries exist for linux and darwin on amd64 and arm64, and for Windows;
-        the{' '}
+        The script downloads the latest release for your machine, checks it against{' '}
+        <code class="font-mono text-fg">checksums.txt</code> and puts{' '}
+        <code class="font-mono text-fg">berthy</code> on your PATH. Read{' '}
+        <a class="underline underline-offset-2 hover:text-fg" href="/install.sh">
+          install.sh
+        </a>{' '}
+        or{' '}
+        <a class="underline underline-offset-2 hover:text-fg" href="/install.ps1">
+          install.ps1
+        </a>{' '}
+        first, or install by hand with the{' '}
         <a class="underline underline-offset-2 hover:text-fg" href={`${readme}#quick-start`}>
           quick start
-        </a>{' '}
-        has the curl commands and the checksum check.
+        </a>
+        .
       </p>
     </div>
   </Container>

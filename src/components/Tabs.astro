@@ -22,7 +22,11 @@ const { id, tabs, group, label = 'Options' } = Astro.props;
 ---
 
 <div class="tabs my-6" data-tabs data-group={group}>
-  <div role="tablist" aria-label={label} class="flex gap-1 overflow-x-auto border-b border-line">
+  <div
+    role="tablist"
+    aria-label={label}
+    class="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line"
+  >
     {tabs.map((tab, i) => (
       <button
         type="button"
