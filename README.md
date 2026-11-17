@@ -106,3 +106,7 @@ Skip link, landmarks, visible focus, keyboard-operable menus, tabs and palette (
 `aria-current` for the current page, `prefers-reduced-motion` respected. axe-core (WCAG 2.2 AA and
 best-practice rules) reports nothing on the home page, docs pages and 404, in light and dark, at 390,
 768 and 1440px.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

@@ -33,7 +33,15 @@ import source from '../content/berthy/source.json';
       ))}
     </div>
     <p class="mt-10 border-t border-line pt-6 text-sm text-fg-subtle">
-      Source on GitHub, no license chosen yet. Docs are synced from{' '}
+      <a
+        class="underline underline-offset-2 hover:text-fg"
+        href={`${SITE.repo}/blob/main/LICENSE`}
+        target="_blank"
+        rel="noopener"
+      >
+        MIT
+      </a>{' '}
+      licensed, source on GitHub. Docs are synced from{' '}
       <a
         class="font-mono underline underline-offset-2 hover:text-fg"
         href={`${SITE.repo}/commit/${source.sha}`}
