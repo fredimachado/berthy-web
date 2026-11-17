@@ -5,7 +5,7 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 
 const root = process.argv[2] ?? 'dist';
-const SITE = 'https://berthy-web.pages.dev';
+const SITE = 'https://berthy.pages.dev';
 
 async function walk(dir) {
   const out = [];

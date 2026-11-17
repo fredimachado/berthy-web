@@ -70,18 +70,17 @@ no index, and the palette says so.
 
 `.github/workflows/site.yml` checks and builds on every push and pull request, and on a daily schedule
 that picks up documentation changes in the berthy repository. On main, the schedule and a manual run it
-also deploys `dist/` to the Cloudflare Pages project `berthy-web`, when both secrets exist. Without them
+also deploys `dist/` to the Cloudflare Pages project `berthy`, when both secrets exist. Without them
 the deploy job ends with a notice.
 
-Once, before the first deploy:
+The Pages project `berthy` exists as a "Direct Upload" project with `main` as its production branch,
+served at `https://berthy.pages.dev`. The deploy needs two repository secrets:
 
-1. Create the Pages project: `npx wrangler pages project create berthy-web --production-branch=main`
-   (or in the Cloudflare dashboard, as a "Direct Upload" project).
-2. Create an API token with **Account → Cloudflare Pages → Edit**, and note the account id.
-3. Add the repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+1. `CLOUDFLARE_ACCOUNT_ID`: the id of the Cloudflare account that owns the project.
+2. `CLOUDFLARE_API_TOKEN`: an API token with **Account → Cloudflare Pages → Edit**.
 
-`site` in `astro.config.mjs` is `https://berthy-web.pages.dev` (canonical URLs and the sitemap come from it); change it and the
-`Sitemap` line in `public/robots.txt` if a custom domain replaces it. Dependabot updates npm packages and
+`site` in `astro.config.mjs` is `https://berthy.pages.dev` (canonical URLs and the sitemap come from it); change it, `SITE`
+in `scripts/check-links.mjs` and the `Sitemap` line in `public/robots.txt` if a custom domain replaces it. Dependabot updates npm packages and
 actions weekly. Every action in the workflow is pinned by commit SHA.
 
 ## Design system

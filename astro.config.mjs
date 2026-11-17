@@ -9,7 +9,7 @@ import { rehypeProse } from './src/lib/rehype-prose';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://berthy-web.pages.dev',
+  site: 'https://berthy.pages.dev',
   // Each page is /path/index.html: the URLs Pagefind and the sitemap list end in a slash.
   trailingSlash: 'always',
   integrations: [sitemap({ filter: (page) => !page.includes('/design') })],
