@@ -16,6 +16,11 @@ updates:
         patterns:
           - 'tailwindcss'
           - '@tailwindcss/*'
+    ignore:
+      # @astrojs/check 0.9.12 rejects TypeScript 7 (ERESOLVE in npm ci); remove when @astrojs/check accepts TypeScript 7.
+      - dependency-name: 'typescript'
+        update-types:
+          - 'version-update:semver-major'
   - package-ecosystem: github-actions
     directory: /
     schedule:
