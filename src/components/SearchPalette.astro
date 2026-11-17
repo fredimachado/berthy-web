@@ -1,0 +1,354 @@
+---
+// The Cmd/Ctrl+K command palette. A native <dialog> opened with showModal() gives the focus trap,
+// Esc and an inert page behind it; the script adds Pagefind search and arrow-key navigation.
+// Pagefind's index only exists in the built site, and is loaded the first time the palette opens.
+import Icon from './Icon.astro';
+import Kbd from './Kbd.astro';
+import { getDocs } from '../lib/docs-nav.ts';
+import { GROUPS } from '../lib/split-guide.ts';
+
+// Shown before the visitor types: the pages most people want first.
+const FIRST = [
+  'what-berthy-is',
+  'prepare-a-server-and-set-it-up',
+  'write-the-manifest',
+  'the-first-deploy',
+  'commands',
+  'manifest-keys',
+];
+const docs = await getDocs();
+const group = (id: string) => GROUPS.find((g) => g.id === id)?.title;
+const suggestions = FIRST.map((slug) => docs.find((d) => d.id === slug))
+  .filter((d) => !!d)
+  .map((d) => ({ title: d.data.label, href: d.data.url, section: group(d.data.group) }));
+---
+
+<dialog id="search-palette" class="palette" aria-labelledby="search-title">
+  <h2 id="search-title" class="sr-only">
+    Search documentation
+  </h2>
+  <div class="palette-field">
+    <Icon name="search" size={18} class="text-fg-subtle" />
+    <input
+      id="search-input"
+      type="text"
+      role="combobox"
+      aria-expanded="true"
+      aria-controls="search-results"
+      aria-autocomplete="list"
+      aria-label="Search the docs"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      placeholder="Search the docs"
+    />
+    <Kbd>esc</Kbd>
+  </div>
+  <div id="search-results" role="listbox" aria-label="Results" class="palette-results"></div>
+  <p id="search-status" class="sr-only" role="status" aria-live="polite"></p>
+  <footer class="palette-foot">
+    <span>
+      <Kbd>↑</Kbd> <Kbd>↓</Kbd> move
+    </span>
+    <span>
+      <Kbd>↵</Kbd> open
+    </span>
+    <span class="ml-auto">Search by Pagefind</span>
+  </footer>
+  <script
+    is:inline
+    type="application/json"
+    id="search-suggestions"
+    set:html={JSON.stringify(suggestions)}
+  />
+</dialog>
+
+<script>
+  type Hit = { title: string; href: string; section?: string; excerpt?: string };
+  type PagefindResult = {
+    url: string;
+    excerpt: string;
+    meta: { title?: string; section?: string };
+    sub_results?: { url: string }[];
+  };
+  type Pagefind = {
+    debouncedSearch(
+      query: string,
+      options?: object,
+      wait?: number,
+    ): Promise<{ results: { data(): Promise<PagefindResult> }[] } | null>;
+  };
+
+  const dialog = document.getElementById('search-palette') as HTMLDialogElement;
+  const input = document.getElementById('search-input') as HTMLInputElement;
+  const list = document.getElementById('search-results') as HTMLElement;
+  const status = document.getElementById('search-status') as HTMLElement;
+  const suggestions: Hit[] = JSON.parse(
+    document.getElementById('search-suggestions')?.textContent ?? '[]',
+  );
+
+  let options: HTMLAnchorElement[] = [];
+  let active = 0;
+  let turn = 0;
+
+  const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+  if (!isMac) document.querySelectorAll('[data-mod]').forEach((el) => (el.textContent = 'Ctrl'));
+
+  // Pagefind is loaded on first use. In `astro dev` there is no index, so loading fails.
+  let pagefind: Promise<Pagefind> | undefined;
+  const pagefindUrl: string = '/pagefind/pagefind.js';
+  const loadPagefind = () => (pagefind ??= import(/* @vite-ignore */ pagefindUrl));
+
+  function setActive(index: number, scroll = true) {
+    if (!options.length) return;
+    active = (index + options.length) % options.length;
+    options.forEach((o, i) => o.setAttribute('aria-selected', String(i === active)));
+    input.setAttribute('aria-activedescendant', options[active].id);
+    if (scroll) options[active].scrollIntoView({ block: 'nearest' });
+  }
+
+  function message(text: string) {
+    list.replaceChildren();
+    options = [];
+    input.removeAttribute('aria-activedescendant');
+    const p = document.createElement('p');
+    p.className = 'palette-empty';
+    p.textContent = text;
+    list.append(p);
+    status.textContent = text;
+  }
+
+  // Pagefind marks matches with <mark>; everything else is escaped text. Built as nodes, never as HTML.
+  // A textarea decodes the entities and, unlike a parsed document, keeps the spaces around a <mark>.
+  const decoder = document.createElement('textarea');
+  const decode = (escaped: string) => ((decoder.innerHTML = escaped), decoder.value);
+
+  function appendExcerpt(el: HTMLElement, html: string) {
+    let marked = false;
+    for (const part of html.split(/(<mark>|<\/mark>)/)) {
+      if (part === '<mark>') marked = true;
+      else if (part === '</mark>') marked = false;
+      else if (part) {
+        const text = decode(part);
+        if (marked) el.append(Object.assign(document.createElement('mark'), { textContent: text }));
+        else el.append(text);
+      }
+    }
+  }
+
+  function render(hits: Hit[], heading: string) {
+    list.replaceChildren();
+    options = [];
+    const group = document.createElement('div');
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', heading);
+    const title = document.createElement('p');
+    title.className = 'palette-group';
+    title.setAttribute('aria-hidden', 'true');
+    title.textContent = heading;
+    group.append(title);
+    for (const hit of hits) {
+      const a = document.createElement('a');
+      a.id = `search-opt-${options.length}`;
+      a.href = hit.href;
+      a.setAttribute('role', 'option');
+      a.className = 'palette-option';
+      const top = document.createElement('span');
+      top.className = 'palette-top';
+      top.append(Object.assign(document.createElement('span'), { textContent: hit.title }));
+      if (hit.section)
+        top.append(Object.assign(document.createElement('small'), { textContent: hit.section }));
+      a.append(top);
+      if (hit.excerpt) {
+        const ex = document.createElement('span');
+        ex.className = 'palette-excerpt';
+        appendExcerpt(ex, hit.excerpt);
+        a.append(ex);
+      }
+      const index = options.length;
+      a.addEventListener('mousemove', () => index !== active && setActive(index, false));
+      options.push(a);
+      group.append(a);
+    }
+    list.append(group);
+    status.textContent = `${hits.length} result${hits.length === 1 ? '' : 's'}`;
+    setActive(0, false);
+  }
+
+  async function search(query: string) {
+    const q = query.trim();
+    const mine = ++turn;
+    if (!q) return render(suggestions, 'Start here');
+    let pf: Pagefind;
+    try {
+      pf = await loadPagefind();
+    } catch {
+      return message('Search works in the built site (npm run build && npm run preview).');
+    }
+    const found = await pf.debouncedSearch(q, {}, 120);
+    if (!found || mine !== turn) return; // a newer keystroke replaced this search
+    const data = await Promise.all(found.results.slice(0, 8).map((r) => r.data()));
+    if (mine !== turn) return;
+    if (!data.length) return message(`No results for "${q}".`);
+    render(
+      data.map((d) => ({
+        title: d.meta.title ?? d.url,
+        href: d.sub_results?.[0]?.url ?? d.url,
+        section: d.meta.section,
+        excerpt: d.excerpt,
+      })),
+      'Documentation',
+    );
+  }
+
+  function open() {
+    if (dialog.open) return;
+    input.value = '';
+    render(suggestions, 'Start here');
+    dialog.showModal();
+    input.focus();
+    void loadPagefind().catch(() => {}); // warm up while the visitor starts typing
+  }
+
+  document.addEventListener('click', (event) => {
+    if ((event.target as Element).closest('[data-search-open]')) open();
+  });
+  document.addEventListener('keydown', (event) => {
+    const target = event.target as HTMLElement;
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable;
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      dialog.open ? dialog.close() : open();
+    } else if (event.key === '/' && !typing && !dialog.open) {
+      event.preventDefault();
+      open();
+    }
+  });
+
+  input.addEventListener('input', () => void search(input.value));
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') (event.preventDefault(), setActive(active + 1));
+    else if (event.key === 'ArrowUp') (event.preventDefault(), setActive(active - 1));
+    else if (event.key === 'Home') (event.preventDefault(), setActive(0));
+    else if (event.key === 'End') (event.preventDefault(), setActive(options.length - 1));
+    else if (event.key === 'Enter' && options[active])
+      (event.preventDefault(), options[active].click());
+  });
+  // A click on the backdrop lands on the dialog element itself.
+  dialog.addEventListener('mousedown', (event) => event.target === dialog && dialog.close());
+</script>
+
+<style is:global>
+  .palette {
+    width: min(40rem, calc(100vw - 1.5rem));
+    max-height: min(34rem, 78vh);
+    margin: 10vh auto auto;
+    padding: 0;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-xl);
+    background: var(--surface);
+    box-shadow: var(--elev-pop);
+  }
+  .palette[open] {
+    display: flex;
+    animation: palette-in var(--duration-base) var(--ease-standard);
+  }
+  .palette::backdrop {
+    background: rgb(11 10 18 / 0.55);
+    backdrop-filter: blur(4px);
+  }
+  .palette-field {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .palette-field input {
+    flex: 1;
+    min-width: 0;
+    height: 3.5rem;
+    border: 0;
+    background: transparent;
+    color: var(--fg);
+    font-size: var(--text-base);
+    outline: none;
+  }
+  .palette-field input::placeholder {
+    color: var(--fg-subtle);
+  }
+  .palette-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+  }
+  .palette-group {
+    padding: 0.5rem 0.75rem 0.25rem;
+    color: var(--fg-subtle);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .palette-option {
+    display: block;
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-md);
+    color: var(--fg);
+    font-size: var(--text-sm);
+  }
+  .palette-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .palette-option small {
+    color: var(--fg-muted);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+  }
+  .palette-excerpt {
+    display: -webkit-box;
+    margin-top: 0.125rem;
+    overflow: hidden;
+    color: var(--fg-muted);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .palette-option mark {
+    border-radius: 2px;
+    background: var(--accent-line);
+    color: var(--fg);
+  }
+  .palette-option[aria-selected='true'] {
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px var(--accent-line);
+  }
+  .palette-empty {
+    padding: 2rem 1rem;
+    color: var(--fg-muted);
+    font-size: var(--text-sm);
+    text-align: center;
+  }
+  .palette-foot {
+    display: flex;
+    gap: 1rem;
+    padding: 0.625rem 1rem;
+    border-top: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--fg-muted);
+    font-size: var(--text-xs);
+  }
+  @keyframes palette-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.98);
+    }
+  }
+</style>

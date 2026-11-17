@@ -1,0 +1,42 @@
+---
+import Icon from './Icon.astro';
+import type { NavItem } from '../lib/docs';
+
+interface Props {
+  prev?: NavItem;
+  next?: NavItem;
+  class?: string;
+}
+const { prev, next, class: className = 'mt-16' } = Astro.props;
+---
+
+{(prev || next) && (
+  <nav aria-label="Previous and next page" class:list={['grid gap-4 sm:grid-cols-2', className]}>
+    {prev ? (
+      <a
+        href={prev.href}
+        rel="prev"
+        class="group rounded-xl border border-line bg-surface p-4 transition duration-(--duration-base) hover:border-accent-line hover:shadow-md"
+      >
+        <span class="flex items-center gap-1 text-xs font-medium text-fg-muted">
+          <Icon name="arrow-left" size={14} /> Previous
+        </span>
+        <span class="mt-1 block font-semibold group-hover:text-accent-text">{prev.label}</span>
+      </a>
+    ) : (
+      <span />
+    )}
+    {next && (
+      <a
+        href={next.href}
+        rel="next"
+        class="group rounded-xl border border-line bg-surface p-4 text-right transition duration-(--duration-base) hover:border-accent-line hover:shadow-md"
+      >
+        <span class="flex items-center justify-end gap-1 text-xs font-medium text-fg-muted">
+          Next <Icon name="arrow-right" size={14} />
+        </span>
+        <span class="mt-1 block font-semibold group-hover:text-accent-text">{next.label}</span>
+      </a>
+    )}
+  </nav>
+)}

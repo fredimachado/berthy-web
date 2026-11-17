@@ -1,0 +1,61 @@
+---
+import Icon from './Icon.astro';
+import type { NavGroup } from '../lib/docs';
+
+interface Props {
+  groups: NavGroup[];
+  /** The href of the page being read. */
+  current: string;
+}
+
+const { groups, current } = Astro.props;
+---
+
+<nav aria-label="Documentation" class="docs-nav text-sm" data-docs-nav>
+  <ul class="grid gap-1">
+    {groups.map((group) => {
+      const hasCurrent = group.items.some((i) => i.href === current);
+      return (
+        <li>
+          <details open={hasCurrent || undefined} class="group/section" data-group>
+            <summary class="flex cursor-pointer list-none items-center justify-between rounded-md px-2 py-1.5 text-[0.8125rem] font-semibold tracking-wide text-fg uppercase select-none hover:bg-surface-2 [&::-webkit-details-marker]:hidden">
+              {group.title}
+              <Icon
+                name="chevron-right"
+                size={14}
+                class="text-fg-subtle transition-transform duration-(--duration-base) ease-(--ease-standard) group-open/section:rotate-90"
+              />
+            </summary>
+            <ul class="mt-1 mb-3 ml-2 grid border-l border-line">
+              {group.items.map((item) => (
+                <li>
+                  <a
+                    href={item.href}
+                    aria-current={item.href === current ? 'page' : undefined}
+                    class="-ml-px block border-l border-transparent py-1.5 pr-2 pl-4 text-fg-muted transition-colors duration-(--duration-fast) hover:border-line-strong hover:text-fg aria-[current=page]:border-accent aria-[current=page]:font-medium aria-[current=page]:text-accent-text"
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </li>
+      );
+    })}
+  </ul>
+</nav>
+
+<script>
+  // Bring the current page into view inside the sidebar's own scroll area (not the window).
+  function reveal() {
+    const link = document.querySelector<HTMLElement>('[data-docs-nav] [aria-current="page"]');
+    const scroller = link?.closest<HTMLElement>('[data-sidebar-scroll]');
+    if (!link || !scroller || scroller.scrollHeight <= scroller.clientHeight) return;
+    const top = link.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+    scroller.scrollTop += top - scroller.clientHeight / 2 + link.offsetHeight / 2;
+  }
+  reveal();
+  // The mobile drawer is measured only once it is on screen.
+  document.addEventListener('docs-sidebar-open', reveal);
+</script>

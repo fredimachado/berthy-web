@@ -1,0 +1,12 @@
+---
+// Wraps rendered Markdown (or any long-form content). The typography lives in .prose in global.css;
+// code blocks, callouts and tables inside it come from the Markdown pipeline (shiki-frame, rehype-prose).
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+---
+
+<div class:list={['prose', className]}>
+  <slot />
+</div>

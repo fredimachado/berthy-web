@@ -1,0 +1,53 @@
+---
+import Container from './Container.astro';
+
+interface Props {
+  id?: string;
+  eyebrow?: string;
+  title?: string;
+  description?: string;
+  tone?: 'default' | 'muted';
+  size?: 'narrow' | 'default' | 'wide';
+  class?: string;
+}
+
+const {
+  id,
+  eyebrow,
+  title,
+  description,
+  tone = 'default',
+  size = 'default',
+  class: className,
+} = Astro.props;
+const headingId = id && title ? `${id}-title` : undefined;
+---
+
+<section
+  id={id}
+  aria-labelledby={headingId}
+  class:list={[
+    'py-16 sm:py-20',
+    tone === 'muted' && 'border-y border-line bg-surface-2',
+    className,
+  ]}
+>
+  <Container size={size}>
+    {(eyebrow || title || description) && (
+      <header class="mb-10 max-w-2xl">
+        {eyebrow && (
+          <p class="mb-2 text-sm font-semibold tracking-wide text-accent-text uppercase">
+            {eyebrow}
+          </p>
+        )}
+        {title && (
+          <h2 id={headingId} class="text-3xl font-semibold tracking-tight text-balance">
+            {title}
+          </h2>
+        )}
+        {description && <p class="mt-3 text-lg text-fg-muted text-pretty">{description}</p>}
+      </header>
+    )}
+    <slot />
+  </Container>
+</section>

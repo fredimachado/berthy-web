@@ -1,0 +1,202 @@
+---
+// The docs page frame, after the layout of Laravel's docs: top bar, left navigation, the article
+// and "On this page" on the right. Below lg the navigation becomes a drawer; below xl the TOC hides.
+import BaseLayout from './BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import DocsSidebar from '../components/DocsSidebar.astro';
+import DocsToc from '../components/DocsToc.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import PrevNext from '../components/PrevNext.astro';
+import EditOnGitHub from '../components/EditOnGitHub.astro';
+import { neighbours, type Crumb, type NavGroup, type TocItem } from '../lib/docs.ts';
+import { SITE } from '../lib/site.ts';
+
+interface Props {
+  title: string;
+  description?: string;
+  headings: TocItem[];
+  /** The href of this page in `nav`, to mark it and find its neighbours. */
+  current: string;
+  crumbs: Crumb[];
+  /** Path of the source file in the repository, for "Edit this page". */
+  editPath?: string;
+  nav: NavGroup[];
+  /** Index the article in search (Pagefind) under this section name. */
+  section?: string;
+  /** The berthy commit the page text was synced from, for the source link. */
+  sha?: string;
+  noindex?: boolean;
+}
+
+const { title, description, headings, current, crumbs, editPath, nav, section, sha } = Astro.props;
+const { prev, next } = neighbours(nav, current);
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  main={false}
+  showVersion
+  noindex={Astro.props.noindex}
+>
+  <section
+    aria-label="Documentation menu"
+    class="sticky top-16 z-30 flex h-12 items-center gap-3 border-b border-line bg-bg/90 px-4 backdrop-blur-xl sm:px-6 lg:hidden"
+  >
+    <button
+      type="button"
+      data-docs-menu
+      aria-expanded="false"
+      aria-controls="docs-sidebar"
+      class="flex h-8 items-center gap-2 rounded-md border border-line bg-surface px-2.5 text-sm font-medium text-fg-muted hover:text-fg"
+    >
+      <Icon name="panel-left" size={16} /> Menu
+    </button>
+    <span class="truncate text-sm text-fg-muted">{crumbs.at(-1)?.label}</span>
+  </section>
+
+  <div
+    data-docs-overlay
+    hidden
+    class="fixed inset-0 z-40 bg-ink-950/60 backdrop-blur-[2px] lg:hidden"
+  ></div>
+
+  <div class="mx-auto max-w-[90rem] px-4 sm:px-6 lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)] lg:gap-x-10 lg:px-8 xl:grid-cols-[16.5rem_minmax(0,1fr)_15rem]">
+    <aside id="docs-sidebar" class="docs-sidebar" aria-label="Documentation sidebar">
+      <div class="flex h-14 items-center justify-between border-b border-line px-4 lg:hidden">
+        <span class="text-sm font-semibold">Documentation</span>
+        <button
+          type="button"
+          data-docs-close
+          aria-label="Close menu"
+          class="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-2 hover:text-fg"
+        >
+          <Icon name="x" size={18} />
+        </button>
+      </div>
+      <div data-sidebar-scroll class="docs-sidebar-scroll">
+        <DocsSidebar groups={nav} current={current} />
+      </div>
+    </aside>
+
+    <main id="main" class="min-w-0 pt-8 pb-16 lg:pt-12">
+      <Breadcrumbs items={crumbs} />
+      <article
+        data-pagefind-body={section ? '' : undefined}
+        data-pagefind-meta={section ? `section:${section}` : undefined}
+      >
+        <slot />
+      </article>
+      <div class="mt-12 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-line pt-6">
+        {editPath && <EditOnGitHub path={editPath} />}
+        {editPath && sha && (
+          <a
+            href={`${SITE.repo}/blob/${sha}/${editPath}`}
+            target="_blank"
+            rel="noopener"
+            class="text-sm text-fg-subtle hover:text-fg"
+          >
+            Source: <code class="font-mono">{editPath}</code> at{' '}
+            <code class="font-mono">{sha.slice(0, 7)}</code>
+          </a>
+        )}
+      </div>
+      <PrevNext prev={prev} next={next} />
+    </main>
+
+    <aside class="hidden xl:block" aria-label="Table of contents">
+      <div class="sticky top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto py-12 pr-1">
+        <DocsToc headings={headings} />
+      </div>
+    </aside>
+  </div>
+</BaseLayout>
+
+<style is:global>
+  @media (min-width: 1024px) {
+    .docs-sidebar {
+      position: sticky;
+      top: 4rem;
+      height: calc(100dvh - 4rem);
+      align-self: start;
+    }
+    .docs-sidebar-scroll {
+      height: 100%;
+      overflow-y: auto;
+      padding: 2rem 0.75rem 3rem 0;
+      scrollbar-width: thin;
+    }
+  }
+  @media (max-width: 1023.98px) {
+    .docs-sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      width: min(20rem, 86vw);
+      border-right: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: var(--elev-lg);
+      transform: translateX(-100%);
+      visibility: hidden;
+      transition:
+        transform var(--duration-base) var(--ease-standard),
+        visibility 0s linear var(--duration-base);
+    }
+    .docs-sidebar[data-open] {
+      transform: none;
+      visibility: visible;
+      transition-delay: 0s;
+    }
+    .docs-sidebar-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+  }
+</style>
+
+<script>
+  const sidebar = document.getElementById('docs-sidebar') as HTMLElement;
+  const overlay = document.querySelector<HTMLElement>('[data-docs-overlay]');
+  const toggle = document.querySelector<HTMLButtonElement>('[data-docs-menu]');
+  const close = sidebar.querySelector<HTMLButtonElement>('[data-docs-close]');
+  const desktop = matchMedia('(min-width: 1024px)');
+
+  function set(open: boolean) {
+    if (!overlay || !toggle) return;
+    sidebar.toggleAttribute('data-open', open);
+    overlay.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    document.body.style.overflow = open ? 'hidden' : '';
+    if (open) {
+      requestAnimationFrame(() => document.dispatchEvent(new Event('docs-sidebar-open')));
+      close?.focus();
+    } else if (!desktop.matches) {
+      toggle.focus();
+    }
+  }
+
+  toggle?.addEventListener('click', () => set(!sidebar.hasAttribute('data-open')));
+  close?.addEventListener('click', () => set(false));
+  overlay?.addEventListener('click', () => set(false));
+  sidebar.addEventListener('click', (event) => {
+    if ((event.target as Element).closest('a')) set(false);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (!sidebar.hasAttribute('data-open')) return;
+    if (event.key === 'Escape') set(false);
+    if (event.key === 'Tab') {
+      // Keep Tab inside the open drawer.
+      const focusable = [...sidebar.querySelectorAll<HTMLElement>('a[href], button, summary')];
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first)
+        (event.preventDefault(), last.focus());
+      else if (!event.shiftKey && document.activeElement === last)
+        (event.preventDefault(), first.focus());
+    }
+  });
+  desktop.addEventListener('change', (event) => event.matches && set(false));
+</script>

@@ -1,0 +1,61 @@
+---
+import Icon from './Icon.astro';
+import type { Version } from '../lib/site.ts';
+
+interface Props {
+  versions: Version[];
+  /** Label of the version being read. */
+  current: string;
+}
+
+const { versions, current } = Astro.props;
+---
+
+<details class="version-select relative" data-version-select>
+  <summary
+    class="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-sm font-medium text-fg-muted transition-colors duration-(--duration-fast) select-none hover:bg-surface-2 hover:text-fg [&::-webkit-details-marker]:hidden"
+    aria-label={`Documentation version: ${current}`}
+  >
+    {current}
+    <Icon name="chevron-down" size={14} />
+  </summary>
+  <ul
+    class="absolute right-0 z-50 mt-2 w-52 rounded-xl border border-line bg-surface p-1.5 shadow-lg"
+    aria-label="Versions"
+  >
+    {versions.map((v) => (
+      <li>
+        <a
+          href={v.href}
+          target={v.external ? '_blank' : undefined}
+          rel={v.external ? 'noopener' : undefined}
+          aria-current={v.label === current ? 'true' : undefined}
+          class="flex items-center justify-between gap-2 rounded-md px-2.5 py-2 text-sm text-fg-muted hover:bg-surface-2 hover:text-fg aria-[current=true]:text-fg"
+        >
+          <span>
+            {v.label}
+            {v.note && <span class="ml-1 text-xs text-fg-subtle">{v.note}</span>}
+          </span>
+          {v.label === current && <Icon name="check" size={14} class="text-accent-text" />}
+          {v.external && <Icon name="external-link" size={14} class="text-fg-subtle" />}
+        </a>
+      </li>
+    ))}
+  </ul>
+</details>
+
+<script>
+  // Close the menu on Escape (returning focus to the summary) or a click outside it.
+  const menus = document.querySelectorAll<HTMLDetailsElement>('[data-version-select]');
+  document.addEventListener('click', (event) => {
+    menus.forEach((m) => m.open && !m.contains(event.target as Node) && (m.open = false));
+  });
+  menus.forEach((menu) =>
+    menu.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && menu.open) {
+        menu.open = false;
+        menu.querySelector('summary')?.focus();
+      }
+    }),
+  );
+</script>

@@ -1,0 +1,39 @@
+---
+interface Props {
+  command: string;
+  /** Text shown before the command, not copied. */
+  prompt?: string;
+  /** Wrap a long command onto several lines instead of scrolling it. */
+  wrap?: boolean;
+  class?: string;
+}
+
+const { command, prompt = '$', wrap = false, class: className } = Astro.props;
+---
+
+<div
+  data-copy-root
+  class:list={[
+    'flex items-center gap-3 rounded-xl border border-line-strong bg-sunken py-1.5 pr-1.5 pl-4 shadow-xs',
+    className,
+  ]}
+>
+  <span class="font-mono text-sm text-accent-text select-none" aria-hidden="true">
+    {prompt}
+  </span>
+  <code
+    data-copy-source
+    class:list={[
+      'min-w-0 flex-1 py-2 font-mono text-sm text-fg',
+      wrap ? 'break-all' : 'overflow-x-auto whitespace-nowrap',
+    ]}
+    tabindex={wrap ? undefined : 0}
+  >
+    {command}
+  </code>
+  <button type="button" class="copy-btn shrink-0" data-copy-from="[data-copy-source]">
+    <span class="sr-only" data-copy-label>
+      Copy command
+    </span>
+  </button>
+</div>

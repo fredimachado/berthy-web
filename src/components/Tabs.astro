@@ -1,0 +1,126 @@
+---
+// Accessible tabs (WAI-ARIA tabs pattern: arrow keys, Home and End). Panels come in as named slots.
+//
+//   <Tabs id="install" tabs={[{ id: 'mac', label: 'macOS' }, { id: 'linux', label: 'Linux' }]}>
+//     <Fragment slot="mac">...</Fragment>
+//     <Fragment slot="linux">...</Fragment>
+//   </Tabs>
+//
+// Tabs that share a `group` keep the same label selected, and remember it.
+export type Tab = { id: string; label: string };
+
+interface Props {
+  /** Unique on the page: prefixes the ARIA ids. */
+  id: string;
+  tabs: Tab[];
+  /** Tabs with the same group stay in step (for example the operating system). */
+  group?: string;
+  label?: string;
+}
+
+const { id, tabs, group, label = 'Options' } = Astro.props;
+---
+
+<div class="tabs my-6" data-tabs data-group={group}>
+  <div role="tablist" aria-label={label} class="flex gap-1 overflow-x-auto border-b border-line">
+    {tabs.map((tab, i) => (
+      <button
+        type="button"
+        role="tab"
+        id={`${id}-tab-${tab.id}`}
+        aria-controls={`${id}-panel-${tab.id}`}
+        aria-selected={i === 0 ? 'true' : 'false'}
+        tabindex={i === 0 ? 0 : -1}
+        data-label={tab.label}
+        class="-mb-px shrink-0 rounded-t-md border-b-2 border-transparent px-3.5 py-2 text-sm font-medium text-fg-muted transition-colors duration-(--duration-fast) hover:text-fg aria-selected:border-accent aria-selected:text-accent-text"
+      >
+        {tab.label}
+      </button>
+    ))}
+  </div>
+  {tabs.map((tab, i) => (
+    <div
+      role="tabpanel"
+      id={`${id}-panel-${tab.id}`}
+      aria-labelledby={`${id}-tab-${tab.id}`}
+      tabindex="0"
+      hidden={i !== 0}
+      class="pt-4"
+    >
+      <slot name={tab.id} />
+    </div>
+  ))}
+</div>
+
+<script>
+  const KEY = 'berthy-tabs:';
+
+  function select(root: HTMLElement, tab: HTMLElement, focus = false) {
+    root.querySelectorAll<HTMLElement>('[role="tab"]').forEach((t) => {
+      const on = t === tab;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+      const panel = document.getElementById(t.getAttribute('aria-controls') ?? '');
+      if (panel) panel.hidden = !on;
+    });
+    if (focus) tab.focus();
+  }
+
+  function choose(root: HTMLElement, label: string) {
+    const tab = [...root.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+      (t) => t.dataset.label === label,
+    );
+    if (tab) select(root, tab);
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-tabs]').forEach((root) => {
+    const group = root.dataset.group;
+    if (group) {
+      try {
+        const saved = localStorage.getItem(KEY + group);
+        if (saved) choose(root, saved);
+      } catch {
+        /* storage unavailable: start on the first tab */
+      }
+    }
+
+    root.addEventListener('click', (event) => {
+      const tab = (event.target as Element).closest<HTMLElement>('[role="tab"]');
+      if (!tab) return;
+      select(root, tab);
+      if (!group) return;
+      document
+        .querySelectorAll<HTMLElement>(`[data-tabs][data-group="${group}"]`)
+        .forEach((other) => other !== root && choose(other, tab.dataset.label ?? ''));
+      try {
+        localStorage.setItem(KEY + group, tab.dataset.label ?? '');
+      } catch {
+        /* ignore */
+      }
+    });
+
+    root.addEventListener('keydown', (event) => {
+      const tabs = [...root.querySelectorAll<HTMLElement>('[role="tab"]')];
+      const current = tabs.indexOf(document.activeElement as HTMLElement);
+      if (current < 0) return;
+      const last = tabs.length - 1;
+      const next =
+        event.key === 'ArrowRight'
+          ? current === last
+            ? 0
+            : current + 1
+          : event.key === 'ArrowLeft'
+            ? current === 0
+              ? last
+              : current - 1
+            : event.key === 'Home'
+              ? 0
+              : event.key === 'End'
+                ? last
+                : -1;
+      if (next < 0) return;
+      event.preventDefault();
+      select(root, tabs[next], true);
+    });
+  });
+</script>

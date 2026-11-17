@@ -1,0 +1,21 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Container from '../components/Container.astro';
+import Button from '../components/Button.astro';
+---
+
+<BaseLayout title="Page not found" noindex>
+  <Container size="narrow" class="py-28 text-center">
+    <p class="font-mono text-sm text-accent-text">404</p>
+    <h1 class="mt-3 text-4xl font-semibold tracking-tight">Nothing is moored here</h1>
+    <p class="mt-4 text-fg-muted">
+      This page does not exist. The documentation starts at the docs home.
+    </p>
+    <div class="mt-8 flex justify-center gap-3">
+      <Button href="/">Home</Button>
+      <Button href="/docs" variant="secondary">
+        Documentation
+      </Button>
+    </div>
+  </Container>
+</BaseLayout>

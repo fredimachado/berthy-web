@@ -1,0 +1,28 @@
+---
+import { Code } from 'astro:components';
+import { berthyThemes } from '../lib/berthy-themes';
+import { shikiFrame } from '../lib/shiki-frame';
+
+interface Props {
+  code: string;
+  lang?: string;
+  /** Shows a title bar with the file name (or any label) and the language. */
+  title?: string;
+  /** Lines to highlight, e.g. "2,4-6". */
+  highlight?: string;
+}
+
+const { code, lang = 'text', title, highlight } = Astro.props;
+
+// The same meta string a fenced Markdown block uses, so both go through one frame (shiki-frame.ts).
+const meta = [title && `title="${title}"`, highlight && `{${highlight}}`].filter(Boolean).join(' ');
+---
+
+<Code
+  code={code.replace(/\n$/, '')}
+  lang={lang as never}
+  meta={meta || undefined}
+  themes={berthyThemes}
+  defaultColor={false}
+  transformers={[shikiFrame()]}
+/>

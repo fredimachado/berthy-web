@@ -1,0 +1,22 @@
+---
+// Horizontal page rhythm: one gutter (16px, then 24, then 32) and a few max widths.
+interface Props {
+  size?: 'narrow' | 'default' | 'wide' | 'full';
+  as?: 'div' | 'section' | 'header' | 'footer' | 'nav';
+  class?: string;
+  [attr: string]: unknown;
+}
+
+const { size = 'default', as: Tag = 'div', class: className, ...rest } = Astro.props;
+
+const widths = {
+  narrow: 'max-w-3xl',
+  default: 'max-w-6xl',
+  wide: 'max-w-[90rem]',
+  full: 'max-w-none',
+};
+---
+
+<Tag class:list={['mx-auto w-full px-4 sm:px-6 lg:px-8', widths[size], className]} {...rest}>
+  <slot />
+</Tag>

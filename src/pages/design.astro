@@ -1,0 +1,841 @@
+---
+// The design system showcase: every token and every component, in the current theme.
+// Use the theme toggle in the header to see both. Colour hex values are read from global.css
+// (raw scales) or from the live page (roles), so this page cannot drift from the tokens.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Container from '../components/Container.astro';
+import Section from '../components/Section.astro';
+import Logo from '../components/Logo.astro';
+import Button from '../components/Button.astro';
+import Badge from '../components/Badge.astro';
+import Kbd from '../components/Kbd.astro';
+import Card from '../components/Card.astro';
+import FeatureCard from '../components/FeatureCard.astro';
+import CopyCommand from '../components/CopyCommand.astro';
+import Callout from '../components/Callout.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import Terminal, { type TerminalLine } from '../components/Terminal.astro';
+import Tabs from '../components/Tabs.astro';
+import ComparisonTable from '../components/ComparisonTable.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import PrevNext from '../components/PrevNext.astro';
+import EditOnGitHub from '../components/EditOnGitHub.astro';
+import DocsSidebar from '../components/DocsSidebar.astro';
+import DocsToc from '../components/DocsToc.astro';
+import { getNav } from '../lib/docs-nav.ts';
+import css from '../styles/global.css?raw';
+
+// Raw scales, parsed from the @theme block in global.css.
+const scale = (name: string) =>
+  [...css.matchAll(new RegExp(`--color-${name}-(\\d+):\\s*(#[0-9a-fA-F]{6})`, 'g'))].map((m) => ({
+    step: m[1],
+    hex: m[2].toLowerCase(),
+  }));
+const scales = [
+  {
+    name: 'ink',
+    note: 'Neutral. Violet-tinted so surfaces feel related to the accent.',
+    steps: scale('ink'),
+  },
+  {
+    name: 'berth',
+    note: 'Accent. 400 and 600 are the colours the terminal UI already uses.',
+    steps: scale('berth'),
+  },
+];
+
+const roles = [
+  { group: 'Surfaces', items: ['--bg', '--surface', '--surface-2', '--sunken'] },
+  { group: 'Borders', items: ['--line', '--line-strong'] },
+  { group: 'Text', items: ['--fg', '--fg-muted', '--fg-subtle'] },
+  {
+    group: 'Accent',
+    items: [
+      '--accent',
+      '--accent-hover',
+      '--accent-fg',
+      '--accent-text',
+      '--accent-soft',
+      '--accent-line',
+    ],
+  },
+  { group: 'Success', items: ['--success', '--success-soft', '--success-line'] },
+  { group: 'Warning', items: ['--warning', '--warning-soft', '--warning-line'] },
+  { group: 'Danger', items: ['--danger', '--danger-soft', '--danger-line'] },
+  { group: 'Info', items: ['--info', '--info-soft', '--info-line'] },
+];
+
+// [foreground role, background role, what it is]
+const contrast: [string, string, string][] = [
+  ['--fg', '--bg', 'Body text on the page'],
+  ['--fg-muted', '--bg', 'Secondary text on the page'],
+  ['--fg-subtle', '--bg', 'Tertiary text on the page'],
+  ['--fg-muted', '--surface-2', 'Secondary text on a raised surface'],
+  ['--fg', '--sunken', 'Code text on the code background'],
+  ['--accent-text', '--bg', 'Accent links on the page'],
+  ['--accent-text', '--accent-soft', 'Accent text on a tinted surface'],
+  ['--accent-fg', '--accent', 'Primary button label'],
+  ['--success', '--success-soft', 'Success text on its tint'],
+  ['--warning', '--warning-soft', 'Warning text on its tint'],
+  ['--danger', '--danger-soft', 'Danger text on its tint'],
+  ['--info', '--info-soft', 'Info text on its tint'],
+];
+
+const typeScale = [
+  ['text-xs', '12 / 18', 'Captions, kbd, badges'],
+  ['text-sm', '14 / 22', 'UI text, sidebar, tables'],
+  ['text-base', '16 / 26', 'Body'],
+  ['text-lg', '18 / 28', 'Lead paragraphs'],
+  ['text-xl', '20 / 28', 'h3 in docs'],
+  ['text-2xl', '24 / 32', 'h2 in docs'],
+  ['text-3xl', '30 / 36', 'Section titles'],
+  ['text-4xl', '40 / 44', 'Page titles'],
+  ['text-5xl', '52 / 55', 'Hero, small screens'],
+  ['text-6xl', '68 / 68', 'Hero'],
+];
+
+const radii = [
+  ['xs', '4px'],
+  ['sm', '6px'],
+  ['md', '8px'],
+  ['lg', '12px'],
+  ['xl', '16px'],
+  ['2xl', '24px'],
+];
+
+const session: TerminalLine[] = [
+  {
+    kind: 'cmd',
+    text: 'berthy deploy api -e prod --version sha256:9f2c… --commit "$(git rev-parse HEAD)"',
+  },
+  {
+    kind: 'out',
+    parts: [
+      { text: '==> ', tone: 'dim' },
+      { text: 'deploy api', tone: 'accent' },
+    ],
+  },
+  {
+    kind: 'out',
+    parts: [
+      { text: 'check    ', tone: 'dim' },
+      { text: 'manifest ok, 3 secrets set', tone: 'ok' },
+    ],
+  },
+  {
+    kind: 'out',
+    parts: [
+      { text: 'migrate  ', tone: 'dim' },
+      { text: 'version 41 -> 42', tone: 'info' },
+    ],
+  },
+  {
+    kind: 'out',
+    parts: [
+      { text: 'start    ', tone: 'dim' },
+      { text: 'new version beside old, waiting for health', tone: 'warn' },
+    ],
+  },
+  {
+    kind: 'out',
+    parts: [
+      { text: 'switch   ', tone: 'dim' },
+      { text: 'healthy, draining old tasks', tone: 'ok' },
+    ],
+  },
+  { kind: 'out', text: 'api  succeeded', tone: 'ok' },
+];
+
+const comparison = {
+  caption: 'Sample comparison: Berthy against a dashboard PaaS and hand-written scripts',
+  columns: [
+    { key: 'berthy', label: 'Berthy', highlight: true },
+    { key: 'paas', label: 'Dashboard PaaS' },
+    { key: 'scripts', label: 'Compose + SSH scripts' },
+  ],
+  rows: [
+    { feature: 'Config lives in Git', values: { berthy: 'yes', paas: 'partial', scripts: 'yes' } },
+    {
+      feature: 'Zero-downtime deploys',
+      note: 'New version starts beside the old one',
+      values: { berthy: 'yes', paas: 'yes', scripts: 'no' },
+    },
+    { feature: 'Rollback by digest', values: { berthy: 'yes', paas: 'partial', scripts: 'no' } },
+    {
+      feature: 'Volume backups to S3',
+      values: { berthy: 'yes', paas: 'partial', scripts: 'partial' },
+    },
+    { feature: 'MCP server for AI agents', values: { berthy: 'yes', paas: 'no', scripts: 'no' } },
+    {
+      feature: 'Server footprint',
+      values: { berthy: 'One binary', paas: 'Web app + DB', scripts: 'Scripts' },
+    },
+  ],
+};
+
+const tocDemo = [
+  { depth: 2, slug: 'brand', text: 'Brand' },
+  { depth: 3, slug: 'colour', text: 'Colour and contrast' },
+  { depth: 2, slug: 'type', text: 'Typography' },
+];
+
+const nav = await getNav();
+const chips = [
+  ['brand', 'Brand'],
+  ['colour', 'Colour'],
+  ['type', 'Type'],
+  ['shape', 'Shape and motion'],
+  ['actions', 'Actions'],
+  ['content', 'Content'],
+  ['code', 'Code and terminal'],
+  ['docs', 'Docs parts'],
+];
+---
+
+<BaseLayout title="Design system" description="Berthy design tokens and components." noindex>
+  <Container size="wide" class="pt-14 pb-6">
+    <Badge tone="accent">Design review</Badge>
+    <h1 class="mt-4 text-5xl font-semibold tracking-tighter">Berthy design system</h1>
+    <p class="mt-4 max-w-2xl text-lg text-fg-muted text-pretty">
+      Tokens and components for the Berthy site. Switch the theme with the toggle in the header; the
+      page is the same in both. The sample documentation page is at{' '}
+      <a
+        class="font-medium text-accent-text underline underline-offset-4"
+        href="/design/docs-sample"
+      >
+        /design/docs-sample
+      </a>
+      .
+    </p>
+    <nav aria-label="Sections of this page" class="mt-8 flex flex-wrap gap-2">
+      {chips.map(([id, label]) => (
+        <a
+          href={`#${id}`}
+          class="rounded-full border border-line bg-surface px-3.5 py-1.5 text-sm font-medium text-fg-muted transition-colors duration-(--duration-fast) hover:border-accent-line hover:text-accent-text"
+        >
+          {label}
+        </a>
+      ))}
+    </nav>
+  </Container>
+
+  <!-- ============================== BRAND ============================== -->
+  <Section
+    size="wide"
+    id="brand"
+    eyebrow="Brand"
+    title="Logo"
+    description="A berth is where a ship docks. The mark is a B drawn as a quay post with two berths moored to it: one stroke weight, round ends, one colour."
+  >
+    <div class="grid gap-4 md:grid-cols-3">
+      <Card class="grid place-items-center py-12">
+        <Logo size={44} />
+      </Card>
+      <div class="grid place-items-center rounded-xl border border-line-strong bg-ink-950 py-12 dark">
+        <Logo size={44} />
+      </div>
+      <Card class="flex items-end justify-around py-10">
+        {[64, 32, 24, 16].map((s) => (
+          <figure class="text-center">
+            <Logo wordmark={false} size={s} />
+            <figcaption class="mt-3 font-mono text-xs text-fg-muted">{s}px</figcaption>
+          </figure>
+        ))}
+      </Card>
+    </div>
+    <p class="mt-4 text-sm text-fg-muted">
+      The favicon is the same mark on the accent tile (
+      <code class="rounded-sm bg-surface-2 px-1 font-mono">public/favicon.svg</code>).
+    </p>
+  </Section>
+
+  <!-- ============================== COLOUR ============================== -->
+  <Section
+    size="wide"
+    id="colour"
+    tone="muted"
+    eyebrow="Colour"
+    title="Palette and roles"
+    description="Two raw scales and a set of roles. Components only use roles (bg-surface, text-fg-muted, border-line), so light and dark need no per-component work."
+  >
+    <div class="grid grid-cols-1 gap-10">
+      {scales.map((s) => (
+        <div>
+          <h3 class="font-semibold">
+            {s.name} <span class="font-normal text-fg-muted">&middot; {s.note}</span>
+          </h3>
+          <ul class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12">
+            {s.steps.map((c) => (
+              <li class="overflow-hidden rounded-lg border border-line bg-surface">
+                <div class="h-14" style={`background:${c.hex}`}></div>
+                <p class="px-2 py-1.5 font-mono text-[0.6875rem] leading-4">
+                  <span class="block font-semibold text-fg">
+                    {s.name}-{c.step}
+                  </span>
+                  <span class="text-fg-muted">{c.hex}</span>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      <div>
+        <h3 class="font-semibold">
+          Roles{' '}
+          <span class="font-normal text-fg-muted">
+            &middot; values shown are for the current theme
+          </span>
+        </h3>
+        <div class="mt-3 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          {roles.map((g) => (
+            <div>
+              <h4 class="mb-2 text-xs font-semibold tracking-wider text-fg-muted uppercase">
+                {g.group}
+              </h4>
+              <ul class="grid gap-2">
+                {g.items.map((v) => (
+                  <li class="flex items-center gap-3">
+                    <span
+                      class="size-10 shrink-0 rounded-lg border border-line-strong"
+                      style={`background:var(${v})`}
+                    ></span>
+                    <span class="min-w-0 font-mono text-xs leading-4">
+                      <span class="block font-semibold text-fg">{v}</span>
+                      <span class="text-fg-muted" data-hex={v}>
+                        &nbsp;
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 class="font-semibold">
+          Contrast{' '}
+          <span class="font-normal text-fg-muted">
+            &middot; measured live in the current theme (WCAG 2.2)
+          </span>
+        </h3>
+        <div
+          class="mt-3 overflow-x-auto rounded-xl border border-line bg-surface"
+          role="region"
+          aria-label="Contrast ratios"
+          tabindex="0"
+        >
+          <table class="w-full min-w-[34rem] border-collapse text-sm">
+            <thead class="bg-surface-2 text-left text-fg-muted">
+              <tr>
+                <th scope="col" class="px-4 py-2.5 font-semibold">
+                  Pair
+                </th>
+                <th scope="col" class="px-4 py-2.5 font-semibold">
+                  Sample
+                </th>
+                <th scope="col" class="px-4 py-2.5 text-right font-semibold">
+                  Ratio
+                </th>
+                <th scope="col" class="px-4 py-2.5 font-semibold">
+                  Level
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {contrast.map(([fg, bg, label]) => (
+                <tr class="border-t border-line" data-contrast data-fg={fg} data-bg={bg}>
+                  <th scope="row" class="px-4 py-2.5 text-left font-medium">
+                    {label}
+                    <span class="block font-mono text-xs font-normal text-fg-muted">
+                      {fg} on {bg}
+                    </span>
+                  </th>
+                  <td class="px-4 py-2.5">
+                    <span
+                      class="inline-block rounded-md border border-line px-3 py-1 font-semibold"
+                      style={`color:var(${fg});background:var(${bg})`}
+                    >
+                      Aa Berthy
+                    </span>
+                  </td>
+                  <td class="px-4 py-2.5 text-right font-mono" data-ratio>
+                    &nbsp;
+                  </td>
+                  <td class="px-4 py-2.5" data-level>
+                    &nbsp;
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </Section>
+
+  <!-- ============================== TYPE ============================== -->
+  <Section
+    size="wide"
+    id="type"
+    eyebrow="Type"
+    title="Typography"
+    description="Geist for the interface and headings, Geist Mono for code: self-hosted variable fonts, a precise grotesque with a matching monospace, designed for developer tooling."
+  >
+    <div class="grid grid-cols-1 gap-8 lg:grid-cols-[2fr_1fr]">
+      <ul class="divide-y divide-line rounded-xl border border-line bg-surface">
+        {typeScale.map(([cls, size, use]) => (
+          <li class="grid items-baseline gap-x-6 gap-y-1 px-5 py-4 sm:grid-cols-[8rem_1fr]">
+            <span class="font-mono text-xs text-fg-muted">
+              {cls}
+              <br />
+              {size}
+            </span>
+            <span class:list={[cls, 'font-semibold tracking-tight']} style="overflow-wrap:anywhere">
+              {use}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div class="grid grid-cols-1 content-start gap-4">
+        <Card>
+          <p class="text-xs font-semibold tracking-wider text-fg-muted uppercase">Geist, weights</p>
+          <p class="mt-3 text-2xl font-normal">Regular 400</p>
+          <p class="text-2xl font-medium">Medium 500</p>
+          <p class="text-2xl font-semibold">Semibold 600</p>
+          <p class="text-2xl font-bold">Bold 700</p>
+        </Card>
+        <Card>
+          <p class="text-xs font-semibold tracking-wider text-fg-muted uppercase">Geist Mono</p>
+          <p class="mt-3 font-mono text-sm leading-7">
+            berthy deploy api -e prod
+            <br />
+            0O 1lI {'{ }'} =&gt; != --dry-run
+          </p>
+        </Card>
+      </div>
+    </div>
+  </Section>
+
+  <!-- ============================== SHAPE ============================== -->
+  <Section
+    size="wide"
+    id="shape"
+    tone="muted"
+    eyebrow="Shape and motion"
+    title="Radii, shadows, rhythm, focus, motion"
+  >
+    <div class="grid grid-cols-1 gap-10">
+      <div>
+        <h3 class="font-semibold">Radii</h3>
+        <ul class="mt-3 flex flex-wrap gap-4">
+          {radii.map(([name, px]) => (
+            <li class="text-center">
+              <div
+                class="size-20 border border-line-strong bg-surface"
+                style={`border-radius:var(--radius-${name})`}
+              ></div>
+              <p class="mt-2 font-mono text-xs text-fg-muted">
+                rounded-{name}
+                <br />
+                {px}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold">
+          Shadows{' '}
+          <span class="font-normal text-fg-muted">
+            &middot; softer and wider in light, border-led in dark
+          </span>
+        </h3>
+        <ul class="mt-3 grid grid-cols-2 gap-6 sm:grid-cols-5">
+          {['xs', 'sm', 'md', 'lg', 'pop'].map((s) => (
+            <li class="text-center">
+              <div class="h-20 rounded-xl bg-surface" style={`box-shadow:var(--elev-${s})`}></div>
+              <p class="mt-3 font-mono text-xs text-fg-muted">shadow-{s}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-semibold">
+          Spacing rhythm{' '}
+          <span class="font-normal text-fg-muted">
+            &middot; a 4px unit; layouts use 4, 8, 12, 16, 24, 32, 48, 64
+          </span>
+        </h3>
+        <ul class="mt-3 grid gap-2">
+          {[1, 2, 3, 4, 6, 8, 12, 16].map((n) => (
+            <li class="flex items-center gap-3 font-mono text-xs text-fg-muted">
+              <span class="w-24 shrink-0">
+                spacing {n} = {n * 4}px
+              </span>
+              <span class="h-3 rounded-sm bg-accent" style={`width:${n * 4}px`}></span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div class="grid gap-6 md:grid-cols-2">
+        <div>
+          <h3 class="font-semibold">Focus ring</h3>
+          <p class="mt-1 text-sm text-fg-muted">
+            2px, offset 2px, on every focusable element. Tab through this page to see it.
+          </p>
+          <div class="mt-3 flex gap-3">
+            <span class="inline-flex h-10 items-center rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium outline-2 outline-offset-2 outline-(--focus)">
+              Focused
+            </span>
+            <Button variant="secondary">Tab to me</Button>
+          </div>
+        </div>
+        <div>
+          <h3 class="font-semibold">Motion</h3>
+          <p class="mt-1 text-sm text-fg-muted">
+            fast 120ms (colour), base 200ms (lift, open), slow 320ms; one easing. All of it stops
+            under <code class="font-mono">prefers-reduced-motion</code>.
+          </p>
+          <div class="mt-3 flex gap-3">
+            <span class="inline-flex h-10 items-center rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium transition duration-(--duration-base) ease-(--ease-standard) hover:-translate-y-1 hover:border-accent-line hover:shadow-md">
+              Hover me
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Section>
+
+  <!-- ============================== ACTIONS ============================== -->
+  <Section size="wide" id="actions" eyebrow="Components" title="Buttons, badges, keys">
+    <div class="grid grid-cols-1 gap-8">
+      <div class="flex flex-wrap items-center gap-3">
+        <Button>Primary</Button>
+        <Button variant="secondary">Secondary</Button>
+        <Button variant="ghost">Ghost</Button>
+        <Button icon="rocket">With icon</Button>
+        <Button variant="secondary" icon="arrow-right" iconPosition="end">
+          Icon after
+        </Button>
+        <Button disabled>Disabled</Button>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <Button size="sm">Small</Button>
+        <Button size="md">Medium</Button>
+        <Button size="lg">Large</Button>
+        <Button size="sm" variant="secondary" icon="github">
+          GitHub
+        </Button>
+        <Button size="lg" variant="ghost" icon="book-open">
+          Read the docs
+        </Button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <Badge>Neutral</Badge>
+        <Badge tone="accent">Accent</Badge>
+        <Badge tone="success" dot>
+          Healthy
+        </Badge>
+        <Badge tone="warning" dot>
+          Degraded
+        </Badge>
+        <Badge tone="danger" dot>
+          Failed
+        </Badge>
+        <Badge tone="info" dot>
+          Deploying
+        </Badge>
+      </div>
+      <p class="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+        Press{' '}
+        <span class="inline-flex gap-1">
+          <Kbd>⌘</Kbd>
+          <Kbd>K</Kbd>
+        </span>{' '}
+        to search, <Kbd>/</Kbd> also works, <Kbd>Esc</Kbd> closes.
+        <Button size="sm" variant="secondary" data-search-open icon="search">
+          Open the palette
+        </Button>
+      </p>
+      <CopyCommand command="berthy setup root@203.0.113.10" class="max-w-xl" />
+    </div>
+  </Section>
+
+  <!-- ============================== CONTENT ============================== -->
+  <Section
+    size="wide"
+    id="content"
+    tone="muted"
+    eyebrow="Components"
+    title="Cards, callouts, tabs, tables"
+  >
+    <div class="grid grid-cols-1 gap-10">
+      <div class="grid gap-4 md:grid-cols-3">
+        <FeatureCard
+          icon="rocket"
+          title="Zero-downtime deploys"
+          description="The new version starts beside the old one and takes traffic only when it is healthy."
+          href="#content"
+        />
+        <FeatureCard
+          icon="undo-2"
+          title="Rollback by digest"
+          description="Every release records the image digest, so going back is exact."
+          href="#content"
+        />
+        <FeatureCard
+          icon="hard-drive"
+          title="Backups to S3"
+          description="Volumes are backed up on a schedule and restored with one command."
+        />
+      </div>
+
+      <div class="grid grid-cols-1 gap-x-6 md:grid-cols-2">
+        <Callout kind="note">
+          A note adds context the reader may want, without interrupting the steps.
+        </Callout>
+        <Callout kind="tip">
+          A tip is a shortcut or a better way. It uses the success colours.
+        </Callout>
+        <Callout kind="warning">
+          A warning names something that can surprise you, with{' '}
+          <code class="font-mono">inline code</code> inside.
+        </Callout>
+        <Callout kind="danger" title="Destroys data">
+          A danger callout is for actions that cannot be undone.
+        </Callout>
+      </div>
+
+      <Tabs
+        id="install"
+        group="os"
+        label="Operating system"
+        tabs={[
+          { id: 'mac', label: 'macOS' },
+          { id: 'linux', label: 'Linux' },
+          { id: 'win', label: 'Windows' },
+        ]}
+      >
+        <Fragment slot="mac">
+          <p class="mb-3 text-sm text-fg-muted">
+            Illustrative commands. Pick a tab with the mouse or the arrow keys; the choice is
+            remembered.
+          </p>
+          <CopyCommand command="brew install fredimachado/tap/berthy" />
+        </Fragment>
+        <Fragment slot="linux">
+          <CodeBlock
+            lang="bash"
+            title="install.sh"
+            highlight="2"
+            code={
+              'curl -fsSL -o berthy https://example.com/berthy-linux-amd64\nchmod +x berthy && sudo mv berthy /usr/local/bin/\nberthy version'
+            }
+          />
+        </Fragment>
+        <Fragment slot="win">
+          <CopyCommand prompt=">" command="scoop install berthy" />
+        </Fragment>
+      </Tabs>
+
+      <ComparisonTable {...comparison} />
+    </div>
+  </Section>
+
+  <!-- ============================== CODE ============================== -->
+  <Section
+    size="wide"
+    id="code"
+    eyebrow="Components"
+    title="Code blocks and terminals"
+    description="Shiki highlighting with two themes built from the tokens (berthy-light, berthy-dark), a frame, a copy button, line highlights."
+  >
+    <div class="grid grid-cols-1 gap-x-8 lg:grid-cols-2">
+      <div>
+        <h3 class="font-semibold">With a title and line highlight</h3>
+        <CodeBlock
+          lang="yaml"
+          title="berthy.yaml"
+          highlight="3-4"
+          code={
+            'app: api\nimage: ghcr.io/acme/todo-api\nreplicas: 2\nhealth_check:\n  path: /healthz\n  start_period: 20s\ndepends_on:\n  - postgres\n  - redis'
+          }
+        />
+        <h3 class="mt-6 font-semibold">Without a title (copy appears on hover)</h3>
+        <CodeBlock
+          lang="bash"
+          code={'berthy deploy api -e prod --dry-run \\\n  --version sha256:<64 hex characters>'}
+        />
+        <h3 class="mt-6 font-semibold">JSON and TypeScript</h3>
+        <CodeBlock
+          lang="json"
+          title="plan.json"
+          code={
+            '{\n  "app": "api",\n  "image": "ghcr.io/acme/todo-api@sha256:9f2c…",\n  "roles": ["web"],\n  "replicas": 2,\n  "protected": true\n}'
+          }
+        />
+      </div>
+      <div>
+        <h3 class="font-semibold">Terminal, static</h3>
+        <Terminal title="~/todo" lines={session} />
+        <h3 class="mt-6 font-semibold">
+          Terminal, typed <span class="font-normal text-fg-muted">&middot; plays on load</span>
+        </h3>
+        <Terminal
+          title="berthy status"
+          typed
+          lines={[
+            { kind: 'cmd', text: 'berthy status -e prod' },
+            {
+              kind: 'out',
+              parts: [
+                { text: 'api       ', tone: 'accent' },
+                { text: '● healthy   ', tone: 'ok' },
+                { text: '2/2 replicas', tone: 'dim' },
+              ],
+            },
+            {
+              kind: 'out',
+              parts: [
+                { text: 'postgres  ', tone: 'accent' },
+                { text: '● healthy   ', tone: 'ok' },
+                { text: 'backup 2h ago', tone: 'dim' },
+              ],
+            },
+            {
+              kind: 'out',
+              parts: [
+                { text: 'redis     ', tone: 'accent' },
+                { text: '● degraded  ', tone: 'warn' },
+                { text: 'restarting', tone: 'dim' },
+              ],
+            },
+            { kind: 'blank' },
+            { kind: 'cmd', text: 'berthy rollback api -e prod' },
+          ]}
+        />
+      </div>
+    </div>
+  </Section>
+
+  <!-- ============================== DOCS PARTS ============================== -->
+  <Section
+    size="wide"
+    id="docs"
+    tone="muted"
+    eyebrow="Components"
+    title="Documentation parts"
+    description="The pieces DocsLayout assembles. See them together on the sample docs page."
+  >
+    <div class="grid grid-cols-1 gap-8 lg:grid-cols-[16.5rem_minmax(0,1fr)_15rem]">
+      <div class="rounded-xl border border-line bg-surface p-4">
+        <p class="mb-3 text-xs font-semibold tracking-wider text-fg-muted uppercase">DocsSidebar</p>
+        <DocsSidebar groups={nav.slice(1, 2)} current="/docs/the-first-deploy" />
+      </div>
+      <div class="grid grid-cols-1 content-start gap-6">
+        <div class="rounded-xl border border-line bg-surface p-5">
+          <p class="mb-3 text-xs font-semibold tracking-wider text-fg-muted uppercase">
+            Breadcrumbs, edit link
+          </p>
+          <Breadcrumbs
+            items={[
+              { label: 'Docs', href: '#docs' },
+              { label: 'Deploying', href: '#docs' },
+              { label: 'The first deploy' },
+            ]}
+          />
+          <EditOnGitHub path="docs/user-guide.md" />
+        </div>
+        <div class="rounded-xl border border-line bg-surface p-5">
+          <p class="mb-3 text-xs font-semibold tracking-wider text-fg-muted uppercase">PrevNext</p>
+          <PrevNext
+            prev={{ label: 'The manifest', href: '#docs' }}
+            next={{ label: 'Rollback by digest', href: '#docs' }}
+          />
+        </div>
+        <div class="rounded-xl border border-line bg-surface p-5">
+          <p class="mb-3 text-xs font-semibold tracking-wider text-fg-muted uppercase">Prose</p>
+          <div class="prose">
+            <h3>A heading with an anchor</h3>
+            <p>
+              Body text is 16px on a 28px line, with <a href="#docs">links</a>,{' '}
+              <strong>strong text</strong>,<code>inline code</code> and <kbd>Ctrl</kbd> +{' '}
+              <kbd>K</kbd>.
+            </p>
+            <ul>
+              <li>Lists keep a muted marker.</li>
+              <li>Nested items stay compact.</li>
+            </ul>
+            <blockquote>
+              <p>A quotation gets an accent rule.</p>
+            </blockquote>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-line bg-surface p-4">
+        <p class="mb-3 text-xs font-semibold tracking-wider text-fg-muted uppercase">DocsToc</p>
+        <DocsToc headings={tocDemo} />
+      </div>
+    </div>
+  </Section>
+
+  <div class="h-8"></div>
+</BaseLayout>
+
+<script>
+  // Fills in hex values and contrast ratios from the live page, so they follow the theme.
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+
+  function rgb(role: string): [number, number, number] {
+    const probe = document.createElement('i');
+    probe.style.color = `var(${role})`;
+    document.body.append(probe);
+    const resolved = getComputedStyle(probe).color;
+    probe.remove();
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.fillStyle = '#000';
+    ctx.fillStyle = resolved;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    return [r, g, b];
+  }
+  const hex = (c: number[]) => '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('');
+  const lum = (c: number[]) => {
+    const [r, g, b] = c
+      .map((v) => v / 255)
+      .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const ratio = (a: number[], b: number[]) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+
+  function paint() {
+    document.querySelectorAll<HTMLElement>('[data-hex]').forEach((el) => {
+      el.textContent = hex(rgb(el.dataset.hex!));
+    });
+    document.querySelectorAll<HTMLElement>('[data-contrast]').forEach((row) => {
+      const r = ratio(rgb(row.dataset.fg!), rgb(row.dataset.bg!));
+      row.querySelector('[data-ratio]')!.textContent = r.toFixed(2) + ':1';
+      const level = r >= 7 ? 'AAA' : r >= 4.5 ? 'AA' : r >= 3 ? 'Large text only' : 'Fail';
+      row.querySelector('[data-level]')!.innerHTML =
+        `<span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+          r >= 4.5
+            ? 'border-success-line bg-success-soft text-success'
+            : 'border-danger-line bg-danger-soft text-danger'
+        }">${level}</span>`;
+    });
+  }
+
+  paint();
+  new MutationObserver(paint).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class'],
+  });
+</script>

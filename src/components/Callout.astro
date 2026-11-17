@@ -1,0 +1,19 @@
+---
+// Same markup as the `> [!NOTE]` alerts in Markdown (see rehype-prose.ts); styled by .callout in global.css.
+interface Props {
+  kind?: 'note' | 'tip' | 'warning' | 'danger';
+  title?: string;
+}
+
+const titles = { note: 'Note', tip: 'Tip', warning: 'Warning', danger: 'Danger' };
+const { kind = 'note', title = titles[kind] } = Astro.props;
+---
+
+<div class:list={['callout', `callout-${kind}`]} role="note">
+  <p class="callout-title" data-pagefind-ignore>
+    {title}
+  </p>
+  <div class="callout-body">
+    <slot />
+  </div>
+</div>

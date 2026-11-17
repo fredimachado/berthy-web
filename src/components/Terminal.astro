@@ -1,0 +1,213 @@
+---
+// A terminal window for CLI sessions and TUI captures. It stays dark in both themes, like a real one.
+// Lines are data, so the "typed" animation, the copy button (commands only) and the text a screen
+// reader gets all come from the same list.
+import Icon from './Icon.astro';
+
+export type Tone = 'ok' | 'warn' | 'err' | 'dim' | 'accent' | 'info';
+export type TerminalPart = { text: string; tone?: Tone };
+export type TerminalLine =
+  | { kind: 'cmd'; text: string }
+  | { kind: 'out'; text?: string; tone?: Tone; parts?: TerminalPart[] }
+  | { kind: 'blank' };
+
+interface Props {
+  lines: TerminalLine[];
+  /** Window title, e.g. "~/todo". */
+  title?: string;
+  prompt?: string;
+  /** Type each command out, one after the other. Off by default; reduced motion shows it all at once. */
+  typed?: boolean;
+  class?: string;
+}
+
+const { lines, title = 'berthy', prompt = '$', typed = false, class: className } = Astro.props;
+
+const commands = lines.flatMap((l) => (l.kind === 'cmd' ? [l.text] : []));
+
+// Delay of each line, so commands type in order and output appears after its command.
+let clock = 0.3;
+const timed = lines.map((line) => {
+  const delay = clock;
+  if (line.kind === 'cmd') clock += line.text.length * 0.03 + 0.25;
+  else clock += 0.12;
+  return { line, delay: delay.toFixed(2) };
+});
+---
+
+<figure
+  data-copy-root
+  class:list={['term my-6 overflow-hidden rounded-xl text-left shadow-md', className]}
+>
+  <figcaption class="term-bar">
+    <span class="term-dots" aria-hidden="true">
+      <i></i>
+      <i></i>
+      <i></i>
+    </span>
+    <span class="term-title">{title}</span>
+    <button
+      type="button"
+      class="term-copy"
+      data-copy-text={commands.join('\n')}
+      disabled={commands.length === 0}
+    >
+      <Icon name="copy" size={14} />
+      <span class="sr-only" data-copy-label>
+        Copy commands
+      </span>
+    </button>
+  </figcaption>
+  <div class="term-body" tabindex="0" role="group" aria-label="Terminal output">
+    {timed.map(({ line, delay }) =>
+      line.kind === 'blank' ? (
+        <span class="term-line">&nbsp;</span>
+      ) : line.kind === 'cmd' ? (
+        <span class="term-line">
+          <span class="term-prompt" aria-hidden="true">
+            {prompt + ' '}
+          </span>
+          {typed ? (
+            <span class="term-type" style={`--chars:${line.text.length};--delay:${delay}s`}>
+              {line.text}
+            </span>
+          ) : (
+            <span>{line.text}</span>
+          )}
+        </span>
+      ) : (
+        <span class:list={['term-line', typed && 'term-fade']} style={`--delay:${delay}s`}>
+          {line.parts ? (
+            line.parts.map((p) => <span class={p.tone && `t-${p.tone}`}>{p.text}</span>)
+          ) : (
+            <span class={line.tone && `t-${line.tone}`}>{line.text}</span>
+          )}
+        </span>
+      ),
+    )}
+  </div>
+</figure>
+
+<style>
+  .term {
+    --t-bg: #0b0a12;
+    --t-bar: #16131f;
+    --t-line: #2a2740;
+    --t-fg: #e8e6f5;
+    --t-dim: #8b87a3;
+    border: 1px solid var(--t-line);
+    background: var(--t-bg);
+    color: var(--t-fg);
+  }
+  .term-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.5rem 0.5rem 1rem;
+    border-bottom: 1px solid var(--t-line);
+    background: var(--t-bar);
+  }
+  .term-dots {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .term-dots i {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 9999px;
+    background: #3e3a5c;
+  }
+  .term-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--t-dim);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+  .term-copy {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    color: var(--t-dim);
+    transition:
+      background var(--duration-fast),
+      color var(--duration-fast);
+  }
+  .term-copy:hover:not(:disabled) {
+    background: #2a2740;
+    color: var(--t-fg);
+  }
+  .term-copy:disabled {
+    display: none;
+  }
+  .term-copy[data-copied] {
+    color: #4ade80;
+  }
+  .term-body {
+    margin: 0;
+    padding: 1rem;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.7;
+  }
+  /* Flex ignores the whitespace between the spans, so the markup can be formatted freely. */
+  .term-line {
+    display: flex;
+    width: max-content;
+    min-width: 100%;
+    min-height: 1.7em;
+  }
+  .term-line > span {
+    white-space: pre;
+  }
+  .term-prompt {
+    color: #9d8cff;
+    user-select: none;
+  }
+  .t-ok {
+    color: #4ade80;
+  }
+  .t-warn {
+    color: #facc15;
+  }
+  .t-err {
+    color: #f87171;
+  }
+  .t-info {
+    color: #67e8f9;
+  }
+  .t-accent {
+    color: #b8acff;
+  }
+  .t-dim {
+    color: var(--t-dim);
+  }
+
+  .term-type {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+    white-space: nowrap;
+    width: calc(var(--chars) * 1ch);
+    animation: term-type calc(var(--chars) * 30ms) steps(var(--chars)) var(--delay) both;
+  }
+  .term-fade {
+    animation: term-fade 160ms ease-out var(--delay) both;
+  }
+  @keyframes term-type {
+    from {
+      width: 0;
+    }
+  }
+  @keyframes term-fade {
+    from {
+      opacity: 0;
+    }
+  }
+</style>

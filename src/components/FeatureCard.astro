@@ -1,0 +1,32 @@
+---
+import Card from './Card.astro';
+import Icon, { type IconName } from './Icon.astro';
+
+interface Props {
+  icon: IconName;
+  title: string;
+  description: string;
+  href?: string;
+  class?: string;
+}
+
+const { icon, title, description, href, class: className } = Astro.props;
+---
+
+<Card href={href} class:list={['group h-full', className]}>
+  <span class="mb-4 grid size-10 place-items-center rounded-lg border border-accent-line bg-accent-soft text-accent-text">
+    <Icon name={icon} size={20} />
+  </span>
+  <h3 class="text-base font-semibold tracking-tight">
+    {title}
+    {href && (
+      <Icon
+        name="arrow-right"
+        size={14}
+        class="ml-1 inline-block -translate-x-1 opacity-0 transition duration-(--duration-base) group-hover:translate-x-0 group-hover:opacity-100"
+      />
+    )}
+  </h3>
+  <p class="mt-1.5 text-sm text-fg-muted">{description}</p>
+  <slot />
+</Card>

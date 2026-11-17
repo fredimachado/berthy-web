@@ -1,0 +1,531 @@
+---
+// The home page. Every claim here comes from the berthy README or the user guide.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Container from '../components/Container.astro';
+import Section from '../components/Section.astro';
+import Button from '../components/Button.astro';
+import Badge from '../components/Badge.astro';
+import Card from '../components/Card.astro';
+import FeatureCard from '../components/FeatureCard.astro';
+import CopyCommand from '../components/CopyCommand.astro';
+import Terminal, { type TerminalLine } from '../components/Terminal.astro';
+import HowItWorks from '../components/HowItWorks.astro';
+import ComparisonTable, { type Column, type Row } from '../components/ComparisonTable.astro';
+import Icon from '../components/Icon.astro';
+import { SITE } from '../lib/site.ts';
+
+const readme = `${SITE.repo}/blob/main/README.md`;
+
+const deploy: TerminalLine[] = [
+  { kind: 'cmd', text: 'berthy deploy -e prod --config $CFG --version sha256:<64 hex characters>' },
+  { kind: 'out', parts: [{ text: '==> deploy postgres', tone: 'accent' }] },
+  { kind: 'out', text: '...', tone: 'dim' },
+  { kind: 'out', parts: [{ text: '==> deploy redis', tone: 'accent' }] },
+  { kind: 'out', text: '...', tone: 'dim' },
+  { kind: 'out', parts: [{ text: '==> deploy api (sha256:<64 hex characters>)', tone: 'accent' }] },
+  { kind: 'out', text: '...', tone: 'dim' },
+  { kind: 'out', parts: [{ text: 'postgres  ' }, { text: 'succeeded', tone: 'ok' }] },
+  { kind: 'out', parts: [{ text: 'redis  ' }, { text: 'succeeded', tone: 'ok' }] },
+  { kind: 'out', parts: [{ text: 'api  ' }, { text: 'succeeded', tone: 'ok' }] },
+];
+
+const opinions = [
+  [
+    'One server per environment',
+    '`prod` and `dev` are different servers, each with its own agent, secrets and tokens. There is no central server.',
+  ],
+  [
+    'Swarm for stateless apps, Compose for stateful ones',
+    'Image apps run as Docker Swarm services, even on one server, for rolling updates and rollback. Databases and caches are Compose apps, and a `stateful` one is never recreated unless a command names it.',
+  ],
+  [
+    'CI builds, Berthy deploys',
+    'Berthy never builds an image. It deploys images that already exist in a registry, pinned by digest.',
+  ],
+  [
+    'Protected environments take digests, not tags',
+    'A tag can move. On a `protected` environment, only a `sha256:` digest is accepted.',
+  ],
+  [
+    "The manifest lives in the app's repository",
+    'YAML: a base file plus one overlay per environment. Every deploy sends the manifest of the commit it deploys. Nothing is configured by hand on the server.',
+  ],
+  [
+    'A private agent API',
+    'The agent listens on one private address (a VPN such as WireGuard or Tailscale) and every request carries a scoped token. It is never meant to be on the public internet.',
+  ],
+  [
+    'Secrets stay in the agent',
+    'They are encrypted on the server, write-only from the CLI, and the manifest names them without holding values.',
+  ],
+  [
+    'No bundled proxy',
+    'Public traffic enters through a Cloudflare Tunnel that Berthy can manage for you (tunnel, connector, hostnames and DNS records), or through an ingress app you run yourself.',
+  ],
+  [
+    'AI agents are first-class users',
+    'They get their own tokens. On a protected environment, what an agent asks for is held until a person approves it.',
+  ],
+] as const;
+
+const features = [
+  [
+    'rocket',
+    'Zero-downtime image deploys',
+    'The new version starts beside the old one, must pass its health check, then takes traffic. A failed rollout rolls back to the previous digest by itself.',
+  ],
+  [
+    'layers',
+    'Every app, in order',
+    '`berthy deploy` with no app deploys every app of the manifest in `depends_on` order.',
+  ],
+  [
+    'history',
+    'Release history and rollback',
+    'Each release records the commit and the requested tag, and `berthy rollback` goes back to any recorded release.',
+  ],
+  [
+    'workflow',
+    'Migrations, hooks and a lock',
+    'Migration and hook steps around a deploy, and a deploy lock.',
+  ],
+  [
+    'scroll-text',
+    'Logs and metrics',
+    'Live logs with per-replica filtering, CPU, memory and disk metrics, and OpenTelemetry export.',
+  ],
+  ['heart-pulse', 'Health probes and alerts', 'Health probes, and alerts to Telegram.'],
+  ['clock', 'Scheduled commands', 'Commands that run on a schedule inside app containers.'],
+  [
+    'hard-drive',
+    'Volume backups',
+    'Backups to S3-compatible storage with restore, and snapshots of the agent’s own state.',
+  ],
+  [
+    'server',
+    'berthy setup',
+    'Installs Docker, Swarm and the agent on a bare Linux server over SSH.',
+  ],
+  [
+    'terminal',
+    'A terminal UI',
+    '`berthy ui` for apps, logs, server metrics and approvals, with restart, rollback and approve from the keyboard.',
+  ],
+  ['bot', 'An MCP server', '`berthy mcp` has the same permissions and the same holds as the CLI.'],
+] as const;
+
+const steps = [
+  [
+    'Install the CLI',
+    'from the release: download a binary, check it against checksums.txt, put it on your PATH.',
+    `${readme}#quick-start`,
+  ],
+  [
+    'Set up the server',
+    'with berthy setup over SSH. Look first with --dry-run.',
+    '/docs/prepare-a-server-and-set-it-up/',
+  ],
+  [
+    'Write a manifest',
+    'in your repository: a base file and one overlay per environment.',
+    '/docs/write-the-manifest/',
+  ],
+  [
+    'Set the secrets',
+    'Values are read from standard input, so they stay out of your shell history.',
+    '/docs/registry-credentials-and-secrets/',
+  ],
+  [
+    'Deploy',
+    'On a protected environment, give the image digest CI printed, not a tag.',
+    '/docs/the-first-deploy/',
+  ],
+] as const;
+
+// Cells are the README's, word for word. "—" means the documentation checked does not say.
+const columns: Column[] = [
+  { key: 'berthy', label: 'Berthy', highlight: true },
+  { key: 'kamal', label: 'Kamal' },
+  { key: 'dokploy', label: 'Dokploy' },
+  { key: 'coolify', label: 'Coolify' },
+  { key: 'dokku', label: 'Dokku' },
+  { key: 'caprover', label: 'CapRover' },
+];
+const row = (feature: string, v: [string, string, string, string, string, string]): Row => ({
+  feature,
+  values: Object.fromEntries(columns.map((c, i) => [c.key, v[i]])),
+});
+const rows: Row[] = [
+  row('Interface', [
+    'CLI, terminal UI, MCP',
+    'CLI',
+    'Web UI, CLI, API, MCP',
+    'Web UI, API, CLI, MCP',
+    'CLI over SSH. A web UI only in the paid Dokku Pro',
+    'Web UI, CLI, API',
+  ]),
+  row('What runs on the server', [
+    'Berthy’s own agent (systemd), plus Docker',
+    'Docker and a kamal-proxy container. Kamal itself runs on your machine and works over SSH',
+    'A control plane (web app, PostgreSQL, Traefik)',
+    'A Coolify instance, which reaches servers over SSH',
+    'Dokku on the host',
+    'CapRover, nginx and Docker Swarm',
+  ]),
+  row('Where images are built', [
+    'In your CI. Berthy only deploys',
+    'On your machine or a remote builder, pushed to a registry',
+    'On the server or a build server (Nixpacks, Railpack, Dockerfile, buildpacks), or an existing image',
+    'On the server or a build server (Nixpacks, Railpack, Dockerfile, Compose), or an existing image',
+    'On the server (Dockerfile or buildpacks), or from an image',
+    'On the server from a captain-definition, or an existing image',
+  ]),
+  row('Orchestration', [
+    'Docker Swarm for image apps, Compose for stateful apps',
+    'Plain Docker over SSH',
+    'Docker Swarm, Compose or Stack',
+    'Docker and Compose. Swarm is deprecated',
+    'Plain Docker on one server. An optional k3s scheduler',
+    'Docker Swarm',
+  ]),
+  row('Zero-downtime deploys', [
+    'New version starts first and must pass its health check',
+    'kamal-proxy switches traffic once the new container answers GET /up',
+    'With a health check you configure, via Swarm',
+    'Rolling update. Not for Compose apps, and no guarantee',
+    'Health checks, then traffic switches',
+    'Documented, with health checks and update settings',
+  ]),
+  row('Rollback', [
+    'Automatic when a rollout fails. berthy rollback to any recorded release',
+    'kamal rollback VERSION, from old containers kept for 3 days by default',
+    'Swarm rollback on failed health checks, and manual to a stored image',
+    'Manual, to a retained image',
+    '—',
+    'Revert in Version History',
+  ]),
+  row('Backups', [
+    'Volumes to S3-compatible storage on a schedule, restore, agent state snapshots',
+    '—',
+    'Database backups to S3 destinations, and volume backups',
+    'Scheduled database and volume backups to S3 and others',
+    'A documented manual procedure',
+    'Documented manual procedures',
+  ]),
+  row('Health checks and alerts', [
+    'Probes and built-in conditions. Alerts to Telegram only',
+    '—',
+    'Notifications of deploy results (Slack, Discord, Telegram, email)',
+    'Monitoring and notifications (email, Discord, Telegram, Slack, Pushover, webhook)',
+    '—',
+    'NetData monitoring, with optional alerts',
+  ]),
+  row('AI agent access', [
+    'MCP server. Agent tokens, and changes held for approval on protected environments',
+    '—',
+    'MCP server, with the permissions of its API key',
+    'MCP server, with the permissions of its API token',
+    '—',
+    '—',
+  ]),
+  row('License', [
+    'Not chosen yet',
+    'MIT',
+    'Apache-2.0, except a proprietary directory',
+    'Apache-2.0',
+    'MIT',
+    'Apache-2.0 with an appendix',
+  ]),
+];
+
+const sources = [
+  ['Kamal', 'https://kamal-deploy.org/docs/installation/', 'https://github.com/basecamp/kamal'],
+  ['Dokploy', 'https://docs.dokploy.com/docs/core', 'https://github.com/Dokploy/dokploy'],
+  ['Coolify', 'https://coolify.io/docs', 'https://github.com/coollabsio/coolify'],
+  [
+    'Dokku',
+    'https://dokku.com/docs/getting-started/installation/',
+    'https://github.com/dokku/dokku',
+  ],
+  ['CapRover', 'https://caprover.com/docs/get-started', 'https://github.com/caprover/caprover'],
+] as const;
+
+// Splits a short string into text and `code` parts.
+const parts = (text: string) =>
+  text
+    .split(/(`[^`]*`)/)
+    .map((part, i) => ({ text: i % 2 ? part.slice(1, -1) : part, code: i % 2 === 1 }));
+const plain = (text: string) => text.replace(/`/g, '');
+---
+
+<BaseLayout title={SITE.name} description={SITE.description}>
+  <!-- Hero -->
+  <Container size="wide" class="pt-20 pb-12 text-center sm:pt-28">
+    <a
+      href={`${SITE.releases}/tag/${SITE.release}`}
+      class="inline-block rounded-full"
+      target="_blank"
+      rel="noopener"
+    >
+      <Badge tone="accent" dot>
+        {SITE.release} is out
+      </Badge>
+    </a>
+    <h1 class="mx-auto mt-6 max-w-4xl text-5xl font-semibold tracking-tighter text-balance sm:text-6xl">
+      Dock your containers.
+      <br />
+      <span class="text-accent-text">Run your servers.</span>
+    </h1>
+    <p class="mx-auto mt-6 max-w-2xl text-lg text-fg-muted text-pretty">
+      Berthy deploys and runs apps on your own Docker servers. One Go binary is the agent on the
+      server, the CLI on your laptop and in CI, a terminal UI, and an MCP server for AI agents.
+    </p>
+    <div class="mt-8 flex flex-wrap justify-center gap-3">
+      <Button href="/docs" size="lg" icon="arrow-right" iconPosition="end">
+        Read the docs
+      </Button>
+      <Button
+        href={SITE.repo}
+        variant="secondary"
+        size="lg"
+        icon="github"
+        target="_blank"
+        rel="noopener"
+      >
+        GitHub
+      </Button>
+    </div>
+    <div class="mx-auto mt-10 max-w-3xl text-left">
+      <CopyCommand
+        wrap
+        command={`gh release download ${SITE.release} -R fredimachado/berthy -p 'berthy-linux-amd64' -p checksums.txt`}
+      />
+      <p class="mt-3 text-sm text-fg-muted">
+        Linux amd64 shown. Binaries exist for linux and darwin on amd64 and arm64, and for Windows;
+        the{' '}
+        <a class="underline underline-offset-2 hover:text-fg" href={`${readme}#quick-start`}>
+          quick start
+        </a>{' '}
+        has the curl commands and the checksum check.
+      </p>
+    </div>
+  </Container>
+
+  <!-- A real session -->
+  <Container size="narrow" class="pb-8">
+    <Terminal title="berthy deploy, from the user guide" lines={deploy} />
+    <p class="text-sm text-fg-muted">
+      One command deploys every app of the manifest in{' '}
+      <code class="font-mono text-fg">depends_on</code> order: postgres, redis, then the API. Each
+      is deployed exactly as <code class="font-mono text-fg">berthy deploy &lt;app&gt;</code> would,
+      and nothing is sent until every app's request is ready.
+    </p>
+  </Container>
+
+  <!-- Opinions -->
+  <Section
+    id="opinions"
+    tone="muted"
+    size="wide"
+    eyebrow="Opinionated"
+    title="Berthy makes choices so that you do not have to"
+    description="If you disagree with several of these, another tool in the comparison below will suit you better."
+  >
+    <ul class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {opinions.map(([title, text]) => (
+        <li>
+          <Card class="h-full">
+            <h3 class="text-base font-semibold tracking-tight">{title}</h3>
+            <p class="mt-1.5 text-sm text-fg-muted">
+              {parts(text).map((p) =>
+                p.code ? (
+                  <code class="rounded-sm border border-line bg-surface-2 px-1 font-mono text-[0.8125rem] text-fg">
+                    {p.text}
+                  </code>
+                ) : (
+                  p.text
+                ),
+              )}
+            </p>
+          </Card>
+        </li>
+      ))}
+    </ul>
+    <p class="mt-6 text-sm text-fg-muted">
+      Berthy has no web dashboard and builds no images. It is for a small team that runs a web
+      application on its own servers, one server per environment.
+    </p>
+  </Section>
+
+  <!-- Features -->
+  <Section
+    id="features"
+    size="wide"
+    eyebrow="What you get"
+    title="Deploys, and everything around them"
+  >
+    <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {features.map(([icon, title, text]) => (
+        <li>
+          <FeatureCard icon={icon} title={title} description={plain(text)} class="h-full" />
+        </li>
+      ))}
+    </ul>
+  </Section>
+
+  <!-- How it works -->
+  <Section
+    id="how-it-works"
+    tone="muted"
+    size="wide"
+    eyebrow="How it works"
+    title="One agent on the server, one binary everywhere else"
+    description="CI builds the images. Berthy deploys them. The agent is only reachable from your private network."
+  >
+    <HowItWorks />
+  </Section>
+
+  <!-- Quick start -->
+  <Section
+    id="quick-start"
+    size="wide"
+    eyebrow="Quick start"
+    title="From a bare server to a deploy"
+  >
+    <ol class="grid gap-3">
+      {steps.map(([title, text, href], i) => (
+        <li>
+          <a
+            href={href}
+            class="group flex items-start gap-4 rounded-xl border border-line bg-surface p-4 transition duration-(--duration-base) ease-(--ease-standard) hover:border-accent-line hover:shadow-md"
+          >
+            <span class="grid size-8 shrink-0 place-items-center rounded-full border border-accent-line bg-accent-soft font-mono text-sm font-semibold text-accent-text">
+              {i + 1}
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block font-semibold group-hover:text-accent-text">{title}</span>
+              <span class="block text-sm text-fg-muted">{text}</span>
+            </span>
+            <Icon name="arrow-right" size={16} class="mt-1 text-fg-subtle" />
+          </a>
+        </li>
+      ))}
+    </ol>
+    <p class="mt-4 text-sm text-fg-muted">
+      You need a Linux server with systemd (amd64 or arm64), a private address on it, and an account
+      that is <code class="font-mono text-fg">root</code> or has passwordless{' '}
+      <code class="font-mono text-fg">sudo</code>. Setup does not create the server, its firewall or
+      your VPN.
+    </p>
+  </Section>
+
+  <!-- Comparison -->
+  <Section
+    id="compare"
+    tone="muted"
+    size="wide"
+    eyebrow="How it compares"
+    title="Berthy, Kamal, Dokploy, Coolify, Dokku and CapRover"
+    description="Berthy was built to replace a Dokploy setup, and its author is moving all their own projects from Dokploy to Berthy."
+  >
+    <p class="mb-4 max-w-3xl text-sm text-fg-muted">
+      Berthy’s author wrote this comparison, so read it with that in mind. Every cell comes from the
+      project’s own documentation or repository, checked on 2026-11-17. “—” means the documentation
+      checked does not say, so treat it as unknown, not as “no”. A subset of the README’s rows is
+      shown;{' '}
+      <a class="underline underline-offset-2 hover:text-fg" href={`${readme}#how-it-compares`}>
+        the README has them all
+      </a>
+      .
+    </p>
+    <ComparisonTable
+      caption="Berthy compared with Kamal, Dokploy, Coolify, Dokku and CapRover"
+      columns={columns}
+      rows={rows}
+      minWidth="70rem"
+    />
+    <div class="mt-6 grid gap-4 md:grid-cols-2">
+      <Card>
+        <h3 class="font-semibold">Choose Berthy when</h3>
+        <p class="mt-1.5 text-sm text-fg-muted">
+          CI already builds your images, you run one server (or a few, one per environment) behind a
+          VPN, and you want digest-pinned, health-gated deploys, backups, scheduled jobs and
+          AI-agent approvals driven from a CLI and a terminal UI, in one small binary. Berthy is
+          young: this is {SITE.release}.
+        </p>
+      </Card>
+      <Card>
+        <h3 class="font-semibold">Do not choose Berthy when</h3>
+        <p class="mt-1.5 text-sm text-fg-muted">
+          You want a web dashboard, builds on the server (buildpacks, Nixpacks,{' '}
+          <code class="font-mono">git push</code>), users and roles for a team beyond token scopes,
+          one-click templates, a multi-server cluster set up and shown for you, or an alert channel
+          other than Telegram. It also needs a private network to reach the agent, and it has no
+          license yet.
+        </p>
+      </Card>
+    </div>
+    <p class="mt-4 text-sm text-fg-muted">
+      When to choose each of the others is in{' '}
+      <a class="underline underline-offset-2 hover:text-fg" href={`${readme}#which-one-to-choose`}>
+        the README
+      </a>
+      .
+    </p>
+    <h3 class="mt-8 text-sm font-semibold">Sources</h3>
+    <ul class="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-fg-muted">
+      {sources.map(([name, docs, repo]) => (
+        <li>
+          {name}: 
+          <a
+            class="underline underline-offset-2 hover:text-fg"
+            href={docs}
+            target="_blank"
+            rel="noopener"
+          >
+            documentation
+          </a>
+          ,{' '}
+          <a
+            class="underline underline-offset-2 hover:text-fg"
+            href={repo}
+            target="_blank"
+            rel="noopener"
+          >
+            repository
+          </a>
+        </li>
+      ))}
+    </ul>
+  </Section>
+
+  <!-- Status -->
+  <Section id="status" size="narrow" eyebrow="Status" title="Young, and honest about it">
+    <p class="text-fg-muted">
+      The first release is{' '}
+      <a
+        class="font-medium text-accent-text underline underline-offset-2"
+        href={`${SITE.releases}/tag/${SITE.release}`}
+        target="_blank"
+        rel="noopener"
+      >
+        {SITE.release}
+      </a>
+      . Berthy’s tests run against a real Docker Swarm, a real registry and fakes for the rest. On
+      2026-11-17 it was also run against a real Ubuntu server, real Cloudflare and GHCR. Telegram
+      alerts, OpenTelemetry backends and S3 backups have not yet been run against the real services.
+      Expect to find edge cases, and try a non-production environment first.
+    </p>
+    <div class="mt-6 flex flex-wrap gap-3">
+      <Button
+        href="/docs/limits-and-what-is-not-there-yet/#not-verified-against-real-services"
+        variant="secondary"
+      >
+        Not verified against real services
+      </Button>
+      <Button href="/docs/" icon="arrow-right" iconPosition="end">
+        Read the docs
+      </Button>
+    </div>
+  </Section>
+</BaseLayout>

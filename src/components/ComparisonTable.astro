@@ -1,0 +1,90 @@
+---
+import Icon from './Icon.astro';
+
+export type Cell = 'yes' | 'no' | 'partial' | (string & {});
+export type Column = { key: string; label: string; highlight?: boolean };
+export type Row = { feature: string; note?: string; values: Record<string, Cell> };
+
+interface Props {
+  columns: Column[];
+  rows: Row[];
+  /** Describes the table to assistive tech. */
+  caption: string;
+  /** Below this width the table scrolls sideways (the first column stays put). */
+  minWidth?: string;
+}
+
+const { columns, rows, caption, minWidth = '34rem' } = Astro.props;
+
+const glyphs = {
+  yes: { icon: 'check', cls: 'text-success', text: 'Yes' },
+  no: { icon: 'x', cls: 'text-fg-subtle', text: 'No' },
+  partial: { icon: 'minus', cls: 'text-warning', text: 'Partial' },
+} as const;
+---
+
+<div
+  class="relative my-6 overflow-x-auto rounded-xl border border-line bg-surface shadow-xs"
+  role="region"
+  aria-label={caption}
+  tabindex="0"
+>
+  <table class="w-full border-collapse text-sm" style={`min-width:${minWidth}`}>
+    <caption class="sr-only">{caption}</caption>
+    <thead>
+      <tr class="bg-surface-2">
+        <th
+          scope="col"
+          class="sticky left-0 z-10 bg-surface-2 px-4 py-3 text-left font-semibold text-fg-muted"
+        >
+          Feature
+        </th>
+        {columns.map((c) => (
+          <th
+            scope="col"
+            class:list={[
+              'px-4 py-3 text-center font-semibold',
+              c.highlight ? 'bg-accent-soft text-accent-text' : 'text-fg-muted',
+            ]}
+          >
+            {c.label}
+          </th>
+        ))}
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((row) => (
+        <tr class="border-t border-line">
+          <th scope="row" class="sticky left-0 z-10 bg-surface px-4 py-3 text-left font-medium">
+            {row.feature}
+            {row.note && (
+              <span class="mt-0.5 block text-xs font-normal text-fg-muted">{row.note}</span>
+            )}
+          </th>
+          {columns.map((c) => {
+            const value = row.values[c.key] ?? 'no';
+            const glyph = glyphs[value as keyof typeof glyphs];
+            return (
+              <td
+                class:list={[
+                  'px-4 py-3 align-top',
+                  glyph ? 'text-center' : 'text-left text-sm leading-snug',
+                  c.highlight && 'bg-accent-soft/60',
+                ]}
+              >
+                {glyph ? (
+                  <span class:list={['inline-grid place-items-center', glyph.cls]}>
+                    <Icon name={glyph.icon} size={18} strokeWidth={2.5} />
+                    <span class="sr-only">{glyph.text}</span>
+                  </span>
+                ) : (
+                  <span class="text-fg-muted">{value}</span>
+                )}
+              </td>
+            );
+          })}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>

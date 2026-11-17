@@ -1,0 +1,27 @@
+---
+// A surface with a border. With `href` the whole card is one link and lifts on hover.
+interface Props {
+  href?: string;
+  padding?: 'none' | 'md' | 'lg';
+  class?: string;
+  [attr: string]: unknown;
+}
+
+const { href, padding = 'md', class: className, ...rest } = Astro.props;
+const Tag = href ? 'a' : 'div';
+const paddings = { none: '', md: 'p-5', lg: 'p-7' };
+---
+
+<Tag
+  href={href}
+  class:list={[
+    'block rounded-xl border border-line bg-surface shadow-xs',
+    paddings[padding],
+    href &&
+      'transition duration-(--duration-base) ease-(--ease-standard) hover:-translate-y-0.5 hover:border-accent-line hover:shadow-md',
+    className,
+  ]}
+  {...rest}
+>
+  <slot />
+</Tag>

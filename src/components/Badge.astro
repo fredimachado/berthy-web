@@ -1,0 +1,32 @@
+---
+export type BadgeTone = 'neutral' | 'accent' | 'success' | 'warning' | 'danger' | 'info';
+
+interface Props {
+  tone?: BadgeTone;
+  /** A status dot before the text. */
+  dot?: boolean;
+  class?: string;
+}
+
+const { tone = 'neutral', dot = false, class: className } = Astro.props;
+
+const tones: Record<BadgeTone, string> = {
+  neutral: 'bg-surface-2 text-fg-muted border-line',
+  accent: 'bg-accent-soft text-accent-text border-accent-line',
+  success: 'bg-success-soft text-success border-success-line',
+  warning: 'bg-warning-soft text-warning border-warning-line',
+  danger: 'bg-danger-soft text-danger border-danger-line',
+  info: 'bg-info-soft text-info border-info-line',
+};
+---
+
+<span
+  class:list={[
+    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap',
+    tones[tone],
+    className,
+  ]}
+>
+  {dot && <span class="size-1.5 rounded-full bg-current" aria-hidden="true" />}
+  <slot />
+</span>

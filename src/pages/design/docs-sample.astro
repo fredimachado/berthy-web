@@ -1,0 +1,24 @@
+---
+// Sample docs page: Markdown rendered inside DocsLayout, to compare with Laravel's docs layout.
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import Prose from '../../components/Prose.astro';
+import { Content, getHeadings } from '../../content/first-deploy.md';
+import { getNav } from '../../lib/docs-nav.ts';
+
+const nav = await getNav();
+---
+
+<DocsLayout
+  title="The first deploy"
+  description="Plan, deploy and verify the first release of an app with Berthy."
+  headings={getHeadings()}
+  current="/design/docs-sample"
+  nav={nav}
+  noindex
+  crumbs={[{ label: 'Design system', href: '/design' }, { label: 'Sample docs page' }]}
+  editPath="docs/user-guide.md"
+>
+  <Prose>
+    <Content />
+  </Prose>
+</DocsLayout>

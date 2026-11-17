@@ -1,0 +1,21 @@
+---
+import Icon from './Icon.astro';
+import { SITE } from '../lib/site';
+
+interface Props {
+  /** Path of the source file inside the repository, e.g. "docs/user-guide.md". */
+  path: string;
+  branch?: string;
+}
+const { path, branch = 'main' } = Astro.props;
+---
+
+<a
+  href={`${SITE.repo}/edit/${branch}/${path}`}
+  target="_blank"
+  rel="noopener"
+  class="inline-flex items-center gap-2 text-sm text-fg-muted transition-colors duration-(--duration-fast) hover:text-fg"
+>
+  <Icon name="pencil" size={14} />
+  Edit this page on GitHub
+</a>

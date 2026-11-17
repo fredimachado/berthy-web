@@ -1,0 +1,111 @@
+---
+// How Berthy fits together, as three short flows. Each flow is an ordered list, so the text is the
+// diagram for assistive tech; the arrows between the boxes are decoration.
+import Icon, { type IconName } from './Icon.astro';
+
+type Step = { icon: IconName; title: string; text: string };
+type Lane = { name: string; summary: string; steps: Step[] };
+
+const lanes: Lane[] = [
+  {
+    name: 'Deploy',
+    summary: 'From your repository to running services',
+    steps: [
+      {
+        icon: 'git-branch',
+        title: 'Your repository and CI',
+        text: 'The manifest lives here. CI builds the images and pushes them.',
+      },
+      {
+        icon: 'package',
+        title: 'Container registry',
+        text: 'Berthy never builds an image. It deploys the ones in the registry, pinned by digest.',
+      },
+      {
+        icon: 'terminal',
+        title: 'berthy CLI',
+        text: 'On your laptop and in CI. Every deploy sends the manifest of its commit.',
+      },
+      {
+        icon: 'server',
+        title: 'Agent on your server',
+        text: 'Listens on a private address (a VPN) and checks a scoped token on every request.',
+      },
+      {
+        icon: 'layers',
+        title: 'Swarm services and Compose apps',
+        text: 'Image apps run as Swarm services. Databases and caches are Compose apps.',
+      },
+    ],
+  },
+  {
+    name: 'Traffic',
+    summary: 'From your users to your apps',
+    steps: [
+      { icon: 'globe', title: 'Your users', text: 'They never reach the agent.' },
+      {
+        icon: 'cloud',
+        title: 'Cloudflare Tunnel',
+        text: 'Managed by Berthy (tunnel, connector, hostnames, DNS), or use an ingress app you run yourself.',
+      },
+      { icon: 'layers', title: 'Your apps', text: 'Berthy bundles no proxy.' },
+    ],
+  },
+  {
+    name: 'AI agents',
+    summary: 'Asking for changes without a free hand',
+    steps: [
+      { icon: 'bot', title: 'An AI agent', text: 'Has its own token, with its own scopes.' },
+      {
+        icon: 'plug',
+        title: 'berthy mcp',
+        text: 'The MCP server: the same permissions as the CLI.',
+      },
+      {
+        icon: 'user-check',
+        title: 'A person approves',
+        text: 'On a protected environment, what an agent asks for is held until a person approves it.',
+      },
+      {
+        icon: 'server',
+        title: 'Agent on your server',
+        text: 'Runs the change once it is approved.',
+      },
+    ],
+  },
+];
+---
+
+<div class="grid gap-8">
+  {lanes.map((lane) => (
+    <section aria-labelledby={`lane-${lane.name.replace(/\W+/g, '-').toLowerCase()}`}>
+      <h3
+        id={`lane-${lane.name.replace(/\W+/g, '-').toLowerCase()}`}
+        class="mb-3 flex flex-wrap items-baseline gap-x-3 text-sm font-semibold"
+      >
+        {lane.name}
+        <span class="font-normal text-fg-muted">{lane.summary}</span>
+      </h3>
+      <ol class="flex flex-col gap-6 lg:flex-row lg:gap-5">
+        {lane.steps.map((step, i) => (
+          <li class="relative flex-1 rounded-xl border border-line bg-surface p-4 shadow-xs">
+            <span class="mb-2 grid size-8 place-items-center rounded-lg border border-accent-line bg-accent-soft text-accent-text">
+              <Icon name={step.icon} size={16} />
+            </span>
+            <p class="text-sm font-semibold">{step.title}</p>
+            <p class="mt-1 text-sm text-fg-muted">{step.text}</p>
+            {i < lane.steps.length - 1 && (
+              <span
+                aria-hidden="true"
+                class="absolute -bottom-[1.1rem] left-1/2 z-10 grid size-5 -translate-x-1/2 place-items-center rounded-full border border-line bg-bg text-fg-subtle lg:top-1/2 lg:-right-[1.1rem] lg:bottom-auto lg:left-auto lg:-translate-y-1/2 lg:translate-x-0"
+              >
+                <Icon name="arrow-down" size={12} class="lg:hidden" />
+                <Icon name="arrow-right" size={12} class="hidden lg:block" />
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  ))}
+</div>

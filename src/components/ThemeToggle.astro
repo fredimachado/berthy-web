@@ -1,0 +1,15 @@
+---
+import Icon from './Icon.astro';
+// Light or dark, remembered in localStorage. Wired by src/scripts/theme.ts (loaded in BaseLayout).
+---
+
+<button
+  type="button"
+  data-theme-toggle
+  aria-pressed="false"
+  aria-label="Switch theme"
+  class="grid size-9 place-items-center rounded-lg text-fg-muted transition-colors duration-(--duration-fast) hover:bg-surface-2 hover:text-fg"
+>
+  <Icon name="sun" size={18} class="hidden dark:block" />
+  <Icon name="moon" size={18} class="dark:hidden" />
+</button>

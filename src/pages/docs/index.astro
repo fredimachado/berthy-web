@@ -1,0 +1,94 @@
+---
+// The docs landing page: the guide's introduction and a card for each group, like Laravel's docs home.
+import { getEntry, render } from 'astro:content';
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import Prose from '../../components/Prose.astro';
+import Card from '../../components/Card.astro';
+import Button from '../../components/Button.astro';
+import Icon from '../../components/Icon.astro';
+import { getDocs, buildNav } from '../../lib/docs-nav.ts';
+import { GROUPS } from '../../lib/split-guide.ts';
+import { SITE } from '../../lib/site.ts';
+import source from '../../content/berthy/source.json';
+
+const docs = await getDocs();
+const nav = buildNav(docs);
+const { Content } = await render((await getEntry('intro', 'guide'))!);
+const icons = {
+  'getting-started': 'book-open',
+  'step-by-step': 'footprints',
+  reference: 'list',
+  specification: 'file-text',
+} as const;
+---
+
+<DocsLayout
+  title="Documentation"
+  description="Berthy's user guide and v1 spec: every command, flag and manifest key, taught by deploying and managing a todo app."
+  headings={[]}
+  current="/docs"
+  nav={nav}
+  crumbs={[{ label: 'Docs' }]}
+>
+  <Prose>
+    <h1>Berthy documentation</h1>
+    <Content />
+  </Prose>
+  <div class="mt-6 flex flex-wrap gap-3">
+    <Button href="/docs/prepare-a-server-and-set-it-up" icon="arrow-right" iconPosition="end">
+      Start with step 1
+    </Button>
+    <Button href="/docs/what-berthy-is" variant="secondary">
+      What Berthy is
+    </Button>
+    <Button href="/docs/commands" variant="ghost">
+      Command reference
+    </Button>
+  </div>
+
+  <div class="mt-12 grid gap-5 md:grid-cols-2">
+    {GROUPS.map((g) => {
+      const items = docs.filter((d) => d.data.group === g.id);
+      return (
+        <Card id={g.id} class="scroll-mt-24">
+          <span class="mb-4 grid size-10 place-items-center rounded-lg border border-accent-line bg-accent-soft text-accent-text">
+            <Icon name={icons[g.id]} size={20} />
+          </span>
+          <h2 class="text-lg font-semibold tracking-tight">{g.title}</h2>
+          <p class="mt-1 text-sm text-fg-muted">{g.description}</p>
+          <ul class="mt-4 grid gap-1 border-t border-line pt-3 text-sm">
+            {items.map((d) => (
+              <li>
+                <a
+                  href={d.data.url}
+                  class="block rounded-sm py-0.5 text-fg-muted hover:text-accent-text"
+                >
+                  {d.data.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      );
+    })}
+  </div>
+
+  <p class="mt-10 text-sm text-fg-subtle">
+    These pages are the user guide and the v1 spec from the{' '}
+    <a class="underline underline-offset-2 hover:text-fg" href={SITE.repo}>
+      berthy repository
+    </a>
+    , synced at{' '}
+    <a
+      class="font-mono underline underline-offset-2 hover:text-fg"
+      href={`${SITE.repo}/commit/${source.sha}`}
+    >
+      {source.sha.slice(0, 7)}
+    </a>
+    . The docs follow <code class="font-mono">main</code>; for a released version, see{' '}
+    <a class="underline underline-offset-2 hover:text-fg" href={SITE.releases}>
+      Releases
+    </a>
+    .
+  </p>
+</DocsLayout>

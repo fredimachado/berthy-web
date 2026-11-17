@@ -1,0 +1,9 @@
+{
+  "repo": "fredimachado/berthy",
+  "branch": "main",
+  "sha": "916100aa1c042254c974156040a77d1663a5ebc8",
+  "files": [
+    "docs/user-guide.md",
+    "docs/spec-v1.md"
+  ]
+}
