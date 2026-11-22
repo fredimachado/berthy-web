@@ -35,8 +35,8 @@ const deploy: TerminalLine[] = [
 
 const opinions = [
   [
-    'One server per environment',
-    '`prod` and `dev` are different servers, each with its own agent, secrets and tokens. There is no central server.',
+    'One agent per server',
+    'That agent hosts any number of (project, environment) pairs, of one or several projects. Each hosted environment has its own secrets and tokens. There is no central server.',
   ],
   [
     'Swarm for stateless apps, Compose for stateful ones',
@@ -217,7 +217,7 @@ const rows: Row[] = [
     'Documented manual procedures',
   ]),
   row('Health checks and alerts', [
-    'Probes and built-in conditions. Alerts to Telegram only',
+    'Probes and built-in conditions. Alerts to Telegram and an HTTP webhook',
     '—',
     'Notifications of deploy results (Slack, Discord, Telegram, email)',
     'Monitoring and notifications (email, Discord, Telegram, Slack, Pushover, webhook)',
@@ -377,8 +377,9 @@ const plain = (text: string) => text.replace(/`/g, '');
       ))}
     </ul>
     <p class="mt-6 text-sm text-fg-muted">
-      Berthy has no web dashboard and builds no images. It is for a small team that runs a web
-      application on its own servers, one server per environment.
+      Berthy has no web dashboard and builds no images. It is for a small team that runs one or
+      several web applications on its own servers. One agent hosts any number of (project,
+      environment) pairs.
     </p>
   </Section>
 
@@ -473,10 +474,10 @@ const plain = (text: string) => text.replace(/`/g, '');
       <Card>
         <h3 class="font-semibold">Choose Berthy when</h3>
         <p class="mt-1.5 text-sm text-fg-muted">
-          CI already builds your images, you run one server (or a few, one per environment) behind a
-          VPN, and you want digest-pinned, health-gated deploys, backups, scheduled jobs and
-          AI-agent approvals driven from a CLI and a terminal UI, in one small binary. Berthy is
-          young: this is {SITE.release}.
+          CI already builds your images, you run your own servers behind a VPN (one agent can host
+          several projects or environments), and you want digest-pinned, health-gated deploys,
+          backups, scheduled jobs and AI-agent approvals driven from a CLI and a terminal UI, in one
+          small binary. Berthy is young: this is {SITE.release}.
         </p>
       </Card>
       <Card>
@@ -526,7 +527,7 @@ const plain = (text: string) => text.replace(/`/g, '');
   <!-- Status -->
   <Section id="status" size="narrow" eyebrow="Status" title="Young, and honest about it">
     <p class="text-fg-muted">
-      The first release is{' '}
+      The latest release is{' '}
       <a
         class="font-medium text-accent-text underline underline-offset-2"
         href={`${SITE.releases}/tag/${SITE.release}`}

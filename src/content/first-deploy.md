@@ -13,7 +13,7 @@ Every deploy starts the same way: look at the plan.
 berthy deploy redis -e prod --config $CFG --dry-run
 ```
 
-`--dry-run` prints the plan and acts on nothing. For a Compose app the plan lists the Compose project (`todo-redis`), each service with its action (`create`, `keep`, `recreate` or `remove`) and each volume with `create` or `keep`.
+`--dry-run` prints the plan and acts on nothing. For a Compose app the plan lists the Compose project (`todo-prod-redis`), each service with its action (`create`, `keep`, `recreate` or `remove`) and each volume with `create` or `keep`.
 
 Then run it for real:
 

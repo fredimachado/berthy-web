@@ -7,7 +7,7 @@ export const SITE = {
   examples: 'https://github.com/fredimachado/berthy-examples',
   releases: 'https://github.com/fredimachado/berthy/releases',
   /** The latest release, as the README names it. */
-  release: 'v0.1.0',
+  release: 'v0.3.0',
 } as const;
 
 export type NavLink = { label: string; href: string; external?: boolean };
