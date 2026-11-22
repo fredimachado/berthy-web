@@ -55,7 +55,7 @@ flowchart LR
     ci["CI runner<br/>CLI in the pipeline"]
   end
 
-  subgraph server["Server, one per environment"]
+  subgraph server["Server, one agent for any number of environments"]
     agent["Berthy agent<br/>deploys, health checks, jobs, backups<br/>API on a private address"]
     subgraph docker["Docker"]
       image["Image apps<br/>web and worker roles, Swarm services"]
