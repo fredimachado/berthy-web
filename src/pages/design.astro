@@ -560,7 +560,11 @@ const chips = [
           Open the palette
         </Button>
       </p>
-      <CopyCommand command="berthy setup root@203.0.113.10" class="max-w-xl" />
+      <CopyCommand
+        wrap
+        command="berthy setup -e prod --host ops@10.0.0.5 --listen 10.0.0.5:7710 --dry-run"
+        class="max-w-xl"
+      />
     </div>
   </Section>
 

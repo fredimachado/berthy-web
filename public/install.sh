@@ -124,7 +124,7 @@ main() {
     *":$dir:"*) ;;
     *) say "Note: $dir is not on your PATH. Add it, or run $dir/berthy." ;;
   esac
-  say 'Next: https://berthy.pages.dev/docs/prepare-a-server-and-set-it-up/'
+  say 'Next: https://berthy.pages.dev/#quick-start'
 }
 
 main "$@"

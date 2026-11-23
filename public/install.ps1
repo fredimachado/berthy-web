@@ -115,5 +115,5 @@
     }
   }
 
-  Write-Host 'Next: https://berthy.pages.dev/docs/prepare-a-server-and-set-it-up/'
+  Write-Host 'Next: https://berthy.pages.dev/#quick-start'
 }

@@ -98,7 +98,11 @@ const features = [
     'Logs and metrics',
     'Live logs with per-replica filtering, CPU, memory and disk metrics, and OpenTelemetry export.',
   ],
-  ['heart-pulse', 'Health probes and alerts', 'Health probes, and alerts to Telegram.'],
+  [
+    'heart-pulse',
+    'Health probes and alerts',
+    'Health probes and alerts to Telegram or an HTTP webhook.',
+  ],
   ['clock', 'Scheduled commands', 'Commands that run on a schedule inside app containers.'],
   [
     'hard-drive',
@@ -107,8 +111,8 @@ const features = [
   ],
   [
     'server',
-    'berthy setup',
-    'Installs Docker, Swarm and the agent on a bare Linux server over SSH.',
+    'Guided server setup',
+    'Installs Docker, Swarm and the agent over SSH. Setup saves the admin token in your OS credential store when available.',
   ],
   [
     'terminal',
@@ -136,7 +140,7 @@ const steps = [
   ],
   [
     'Fill in any missing secrets',
-    'At a terminal, setup generates eligible secrets and prompts for the rest without echoing them. Run berthy secret set to resume.',
+    'At a terminal, setup generates eligible secrets and prompts for the rest without echoing them. Run berthy secret set -e prod to resume.',
     '/docs/registry-credentials-and-secrets/',
   ],
   [
@@ -442,6 +446,10 @@ const plain = (text: string) => text.replace(/`/g, '');
       that is <code class="font-mono text-fg">root</code> or has passwordless{' '}
       <code class="font-mono text-fg">sudo</code>. Setup does not create the server, its firewall or
       your VPN.
+    </p>
+    <p class="mt-2 text-sm text-fg-muted">
+      Set <code class="font-mono text-fg">BERTHY_ENV=prod</code> to use prod as the default
+      environment for commands that take <code class="font-mono text-fg">-e</code>.
     </p>
   </Section>
 

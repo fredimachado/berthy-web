@@ -1,9 +1,9 @@
 # The first deploy
 
-Deploy in this order: **redis, postgres, then the API.** The API reads from both, and its migrations need the database to exist. The API's `depends_on` says the same, and [one command](#deploy-every-app-at-once) can deploy all three.
+Deploy **Redis and Postgres before the API**. The API depends on both services, and its migrations need Postgres. [One command](#deploy-every-app-at-once) can deploy all three.
 
 > [!NOTE]
-> This page is excerpted from the Berthy user guide and shortened. It exists to show the docs layout, not to be followed.
+> This excerpt demonstrates the docs layout. For the full walkthrough, see [The first deploy](/docs/the-first-deploy/).
 
 ## Look at the plan first
 
