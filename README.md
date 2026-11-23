@@ -33,12 +33,12 @@ Node 24 (`.nvmrc`).
 
 ## Where the docs come from
 
-The content is not written here. `scripts/sync-docs.mjs` downloads `docs/user-guide.md` and
-`docs/spec-v1.md` from the berthy repository (`main`, at one commit) into `src/content/berthy/`, and
-writes the commit it used to `source.json`. `npm run build` uses the local snapshot, so it works
-offline. Run `npm run sync-docs` to refresh it locally. If the download fails, the script warns and
-keeps the snapshot. The Site workflow runs `npm run sync-docs -- --strict` once before checks and
-requires it to succeed. The checks and build then use the same docs revision.
+`scripts/sync-docs.mjs` resolves Berthy's `main` branch with Git, downloads `docs/user-guide.md` and
+`docs/spec-v1.md` at that commit into `src/content/berthy/`, and writes the commit to `source.json`.
+`npm run build` uses the local snapshot and works offline. Run `npm run sync-docs` to refresh it.
+If the download fails, the script warns and keeps the snapshot. The Site workflow runs
+`npm run sync-docs -- --strict` once before checks and requires it to succeed. The checks and build
+then use the same docs revision.
 
 `src/lib/split-guide.ts` is the single place that turns the two files into pages. It is pure and
 unit-tested (`tests/split-guide.test.ts`):

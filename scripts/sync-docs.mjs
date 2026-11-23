@@ -1,15 +1,18 @@
 // Downloads Berthy's docs from the berthy repository into src/content/berthy/ (a snapshot that is
 // committed) and records the commit it came from. Local sync can fall back to the existing snapshot.
 // The Site workflow uses --strict to require a fresh sync.
+import { execFile } from 'node:child_process';
 import { mkdir, writeFile, access } from 'node:fs/promises';
+import { promisify } from 'node:util';
 
 const REPO = 'fredimachado/berthy';
 const FILES = ['user-guide.md', 'spec-v1.md'];
 const OUT = new URL('../src/content/berthy/', import.meta.url);
+const execFileAsync = promisify(execFile);
 
-async function get(url, accept) {
+async function get(url) {
   const res = await fetch(url, {
-    headers: { 'user-agent': 'berthy-web-sync-docs', ...(accept ? { accept } : {}) },
+    headers: { 'user-agent': 'berthy-web-sync-docs' },
     signal: AbortSignal.timeout(20_000),
   });
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
@@ -27,11 +30,13 @@ async function exists(file) {
 
 try {
   // Resolve the commit first, then read the files at that commit, so the snapshot is consistent.
-  const commit = await (
-    await get(`https://api.github.com/repos/${REPO}/commits/main`, 'application/vnd.github+json')
-  ).json();
-  const sha = commit.sha;
-  if (!/^[0-9a-f]{40}$/.test(sha ?? '')) throw new Error('GitHub API returned no commit sha');
+  const { stdout } = await execFileAsync(
+    'git',
+    ['ls-remote', '--exit-code', `https://github.com/${REPO}.git`, 'refs/heads/main'],
+    { timeout: 20_000 },
+  );
+  const [sha] = stdout.split(/\s+/);
+  if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error('Git returned no commit SHA for Berthy main');
   const bodies = await Promise.all(
     FILES.map(async (f) => [
       f,
