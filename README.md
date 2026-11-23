@@ -13,7 +13,7 @@ framework: a few small vanilla scripts (theme, copy, tabs, search palette, menus
 npm install
 npm run dev          # http://localhost:4321 (search needs the built site)
 npm run sync-docs    # refresh the docs snapshot from the berthy repository
-npm run build        # sync-docs, astro build, then the Pagefind index, into dist/
+npm run build        # build from the local docs snapshot and index with Pagefind, into dist/
 npm run preview      # serve dist/ (the search works here)
 npm run check        # astro check (types, templates)
 npm test             # unit tests for the docs splitter (node --test)
@@ -35,8 +35,10 @@ Node 24 (`.nvmrc`).
 
 The content is not written here. `scripts/sync-docs.mjs` downloads `docs/user-guide.md` and
 `docs/spec-v1.md` from the berthy repository (`main`, at one commit) into `src/content/berthy/`, and
-writes the commit it used to `source.json`. That snapshot is committed, so the site builds offline:
-if the download fails, the script warns and keeps the snapshot.
+writes the commit it used to `source.json`. `npm run build` uses the local snapshot, so it works
+offline. Run `npm run sync-docs` to refresh it locally. If the download fails, the script warns and
+keeps the snapshot. The Site workflow runs `npm run sync-docs -- --strict` once before checks and
+requires it to succeed. The checks and build then use the same docs revision.
 
 `src/lib/split-guide.ts` is the single place that turns the two files into pages. It is pure and
 unit-tested (`tests/split-guide.test.ts`):

@@ -38,9 +38,9 @@ jobs:
       - name: Install
         run: npm ci
 
-      # The newest berthy docs. A network failure keeps the committed snapshot and warns.
+      # Check and build the same revision of the official docs.
       - name: Sync the docs
-        run: npm run sync-docs
+        run: npm run sync-docs -- --strict
 
       - name: Check types and templates
         run: npm run check

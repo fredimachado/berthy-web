@@ -1,6 +1,6 @@
 // Downloads Berthy's docs from the berthy repository into src/content/berthy/ (a snapshot that is
-// committed) and records the commit it came from. On a network error the existing snapshot is kept
-// and a warning is printed, so offline builds still work.
+// committed) and records the commit it came from. Local sync can fall back to the existing snapshot.
+// The Site workflow uses --strict to require a fresh sync.
 import { mkdir, writeFile, access } from 'node:fs/promises';
 
 const REPO = 'fredimachado/berthy';
@@ -44,6 +44,8 @@ try {
   await writeFile(new URL('source.json', OUT), JSON.stringify(source, null, 2) + '\n');
   console.log(`sync-docs: ${FILES.join(', ')} at ${sha.slice(0, 7)}`);
 } catch (error) {
+  if (process.argv.includes('--strict')) throw error;
+
   const have = (await Promise.all([...FILES, 'source.json'].map(exists))).every(Boolean);
   console.warn(`sync-docs: WARNING ${error.message}`);
   console.warn(
