@@ -33,17 +33,18 @@ The files the guide uses are in [`examples/todo/`](../examples/todo/). They pass
 ## How to read the commands
 
 - `prod` is the environment in the story, of the project `todo`. The server is `10.0.0.5`, and its agent listens on `10.0.0.5:7710`.
-- Commands that talk to the agent need `-e prod`, which names the environment. The project comes from `--project`, else the `project` of `berthy.yml` in the directory you run from, else the only project that has that environment. They find the CLI configuration file on their own, from the first of these that is set:
+- Commands that talk to the agent need `-e prod`, which names the environment. Without `-e`, they read `BERTHY_ENV` from the shell (for example `export BERTHY_ENV=prod`). A given `-e` wins, including an empty one. `BERTHY_ENV` lives in the shell only; it is never written to the CLI configuration. `context add` and `context remove`, `agent token`, `state-restore` and `mcp` do not read it. The project comes from `--project`, else the `project` of `berthy.yml` in the directory you run from, else the only project that has that environment. They find the CLI configuration file on their own, from the first of these that is set:
 
   1. `--config <file>`
   2. the `BERTHY_CONFIG` environment variable
   3. `berthy/config.json` in your user configuration directory: `~/.config/berthy/config.json` on Linux (or `$XDG_CONFIG_HOME/berthy/config.json` when that is set), `~/Library/Application Support/berthy/config.json` on macOS, and `%AppData%\berthy\config.json` on Windows
 
-  The file maps each project and environment to its agent and names the variable that holds its token. It never holds a token. When none of the three is set, or the file is missing, the error names the path it looked for.
+  The file maps each project and environment to its agent and names the variable that holds its token. It never holds a token. Commands use the variable first, then look in the OS credential store when it is empty. A stored token belongs to that agent, project, environment and token variable, so another entry with a different variable cannot use it. Set `BERTHY_TOKEN_STORE=none` to disable the store. When none of the three is set, or the file is missing, the error names the path it looked for.
 
 - `<token>`, `<password>` and similar in angle brackets are placeholders. The guide never prints a real token or secret. A secret is typed at a hidden prompt or piped in, so it never appears in a command line or in your shell history.
 - Flags can come in any order, before or after the app name. The one exception is `exec` and `run`: everything after `--` is the command to run.
 - The exit code matters. `0` means done. `1` means failed. `2` means you typed the command wrong. `3` means an AI agent's change is held for approval. Scripts and CI should check it.
+- On a terminal, a changing remote command or `setup` prints one line to stderr before it does anything, dry runs included: `berthy: todo/prod at http://10.0.0.5:7710` for a remote command, or `berthy: todo/prod on ops@10.0.0.5` (or `on this server` with `--local`) for `setup`. When `BERTHY_ENV` chose the environment, the line ends with ` (environment from BERTHY_ENV)`. With stderr redirected, or under `--json` on stdout, nothing is added.
 
 ---
 
@@ -219,10 +220,11 @@ The steps run in this order. Each one checks first and only acts when something 
 | `user` | Creates the `berthy` system user and adds it to the `docker` group. |
 | `binary` | Installs the Berthy binary as `/usr/local/bin/berthy` (see "Where the binary comes from"). |
 | `key` | Prepares `/var/lib/berthy/environments/todo/prod/state` and makes the encryption key `/var/lib/berthy/environments/todo/prod/key`. It never replaces an existing key. |
-| `token` | Creates the first `admin` token. It is shown once, at the end. The agent keeps only its digest. |
+| `token` | Creates the first `admin` token. The agent keeps only its digest. |
 | `config` | Writes `/etc/berthy/agent.json`. It sets the environment, the listen address, `docker_socket` (`/var/run/docker.sock`), the state directory and key file, `protected` and `network`, and the tokens. |
 | `service` | Installs, enables and starts `berthy.service`, and waits until the agent answers. |
 | `cli_config` | Adds the environment to the CLI configuration file: the one `--config` names, or else the one the CLI finds (see [How to read the commands](#how-to-read-the-commands)). Without any location it is skipped, with a hint of the entry to add yourself. |
+| `cli_token` | Saves the new admin token in this machine's credential store, or shows it when the save is unavailable or unconfirmed. |
 | `verify` | Runs `doctor` on the new agent (see below). |
 
 Every step ends with one status, shown as a glyph: `✓` for `ok` (nothing to change) and `changed`, `·` for `would_change` (dry run), `–` for `skipped` and `✖` for `failed`. This is a real first run, on a test server with another environment name and address. The names are the guide's (`prod`, `ops@10.0.0.5`, `10.0.0.5:7710`, network `todo-prod`), and the details are what setup prints:
@@ -236,10 +238,11 @@ Every step ends with one status, shown as a glyph: `✓` for `ok` (nothing to ch
 ✓ user        created the berthy user, added it to the docker group
 ✓ binary      uploaded this CLI (v0.1.0-me), sha256 58eb0c5853b3
 ✓ key         prepared /var/lib/berthy, prepared /var/lib/berthy/environments, prepared /var/lib/berthy/environments/todo, prepared /var/lib/berthy/environments/todo/prod, prepared /var/lib/berthy/environments/todo/prod/state, generated an encryption key on the server
-✓ token       created an admin token named admin; it is shown once, at the end
+✓ token       created an admin token named admin
 ✓ config      created /etc/berthy/agent.json (listen 10.0.0.5:7710, 1 environment)
 ✓ service     installed, enabled and started berthy.service
 ✓ cli_config  wrote prod at http://10.0.0.5:7710 to config.json (token in $BERTHY_TODO_PROD_TOKEN)
+– cli_token   no credential store on this machine: the token is shown below; set it in $BERTHY_TODO_PROD_TOKEN
 ✓ verify      agent v0.1.0-me, 9 of 9 checks ok
 setup of todo/prod on ops@10.0.0.5: done
 
@@ -254,17 +257,20 @@ next steps:
   6. deploy every app in depends_on order, with --version APP=REF for each image app: berthy deploy -e prod --project todo --config /home/me/.config/berthy/config.json --version APP=REF (or one app: berthy deploy APP -e prod --project todo --config /home/me/.config/berthy/config.json --version REF)
 ```
 
-The token comes **after** the step lines, once. Setup prints the next steps only after a successful run that is not a dry run. The ingress item appears only when the manifest declares managed ingress. The next steps name `--config` only when you gave it to setup. Without it, the commands find the CLI configuration on their own. (The sample above is from a run on a test server, shortened where its details differ.)
+This sample is a non-terminal run with no credential store, so the token comes **after** the step lines. When the store confirms the save, setup prints the token only if you pass `--show-token`. An unconfirmed save may still finish later, so setup shows the token to avoid losing it. Setup prints the next steps only after a successful run that is not a dry run. The ingress item appears only when the manifest declares managed ingress. The next steps name `--config` only when you gave it to setup. Without it, the commands find the CLI configuration on their own. (The sample above is from a run on a test server, shortened where its details differ.)
 
-A **second run** shows every line with `✓` and wording such as "kept", "in place" or "running", and no token:
+After a successful text-mode setup with a loaded manifest, terminal input and an available admin token, setup runs the secrets guide after the summary and any token, before printing next steps. It generates declared secrets and asks for the remaining values without echoing them; Enter skips a value. When the guide finishes, next steps name any secrets still missing. If it cannot finish, setup keeps the manual secret commands. A pipe or `--json` skips the guide and prints those commands. A dry run also skips the guide. The guide does not change the setup exit status.
+
+A **second run** keeps the existing token and shows no new token. With a stored token it reports:
 
 ```text
 ✓ binary      this CLI (v0.1.0-me) is installed
 ✓ token       the tokens of /etc/berthy/agent.json are kept
+✓ cli_token   the admin token is in the Secret Service
 ✓ verify      agent v0.1.0-me, 9 of 9 checks ok
 ```
 
-If you want a machine-readable result, add `--json`. It prints one object and nothing else. The token is in it as `"token"`, and the next steps as `"next_steps"`:
+If you want a machine-readable result, add `--json`. It prints one object and nothing else. An unstored token is in it as `"token"`, and the next steps as `"next_steps"`. A confirmed save adds `"token_stored": true` and omits `token` unless `--show-token` was given:
 
 ```json
 {"project": "todo", "environment": "prod", "target": "ops@10.0.0.5", "dry_run": false, "ok": true,
@@ -272,7 +278,7 @@ If you want a machine-readable result, add `--json`. It prints one object and no
  "token": "<token>", "next_steps": ["..."]}
 ```
 
-Exit codes: `0` all steps fine, `1` a step failed (the output names it), `2` the command line is wrong. If a later step fails after the configuration holding the token went live, the token is still printed, because a second run keeps that configuration and would not make another.
+Exit codes: `0` all steps fine, `1` a step failed (the output names it), `2` the command line is wrong. If a later step fails after the configuration holding the token went live, setup prints the token if the save was not confirmed or `--show-token` was given. If activation is interrupted while installing or rolling back the configuration and setup cannot tell which configuration remains, the failed run also shows the token in case the server kept it. The token is not saved or treated as live in that case.
 
 #### Where the binary comes from
 
@@ -286,11 +292,11 @@ A development build on macOS or Windows has no release to download, so give it `
 
 #### The `verify` step
 
-`verify` asks the new agent for its `doctor`. It sends the request **from your machine**, with the token this run made, or else the token in the variable the CLI configuration names (`BERTHY_TODO_PROD_TOKEN`). If your machine cannot reach the private address, setup says so and runs the same check **on the server**. With no token at all, it only checks that the agent answers on `/healthz`, and tells you to run `berthy doctor` yourself. Any critical check that fails fails the step.
+`verify` asks the new agent for its `doctor`. It sends the request **from your machine**, with the token this run made, or else the token in the variable the CLI configuration names (`BERTHY_TODO_PROD_TOKEN`), or the token saved for that entry in the credential store. If your machine cannot reach the private address, setup says so and runs the same check **on the server**. With no token at all, it only checks that the agent answers on `/healthz`, and tells you to run `berthy doctor` yourself. Any critical check that fails fails the step.
 
 #### Save three things
 
-1. **The first admin token.** It is printed once, after the step lines. Put it in a password manager and into your shell:
+1. **The first admin token.** Setup saves it in this machine's credential store when available. Pass `--show-token` to print it as well. If the save is unavailable or unconfirmed, setup prints it after the step lines. Save it privately and set it in your shell:
 
    ```bash
    export BERTHY_TODO_PROD_TOKEN=<token>
@@ -349,6 +355,7 @@ Running it with a **newer CLI**, or with `--binary`, **upgrades the agent**. Onl
 | `--binary <path>` | Install this Linux build of Berthy instead of this CLI or the release. |
 | `--key-file <path>` | Install a saved encryption key (exactly 32 bytes) instead of generating one. Used when you [rebuild a server](#step-15-rebuild-a-server). It never replaces a different key that is already on the server. |
 | `--new-token` | Add another `admin` token, when the first one is lost. |
+| `--show-token` | Print the newly created admin token as well as saving it. |
 
 If the directory has a manifest, setup reads the project, `network` and `protected` from the merged manifest of the environment. A `--project` or `--network` flag that disagrees with the manifest is an error. With no `berthy.yml` and no `--project`, setup stops and asks for `--project NAME`. Without a manifest or `--network`, the network defaults to `<project>-<environment>`.
 
@@ -368,7 +375,7 @@ The agent's configuration is plain JSON. Its keys are listed in the [reference](
 
 #### More than one project or environment on a server
 
-`berthy setup` on a server that already runs an agent adds another hosted environment: its own state, key, admin token and network. Other hosted environments on the agent are unchanged. Setup rewrites `agent.json` and restarts the shared agent for everyone on the server. It prints a new admin token for the entry it just added.
+`berthy setup` on a server that already runs an agent adds another hosted environment: its own state, key, admin token and network. Other hosted environments on the agent are unchanged. Setup rewrites `agent.json` and restarts the shared agent for everyone on the server. It saves the new admin token for the entry, or prints it if the save is unavailable or unconfirmed.
 
 ```bash
 # Another project on the same server (no berthy.yml in this directory):
@@ -399,10 +406,10 @@ Host checks (disk, memory, Docker, public ports, reboot) still run inside every 
 `berthy setup` writes the CLI configuration on the machine that runs it. On a second laptop, add the same hosted environment without SSH:
 
 ```bash
-berthy context add --project todo -e prod --url "http://10.0.0.5:7710" --token-env BERTHY_TODO_PROD_TOKEN
+berthy context add --project todo -e prod --url "http://10.0.0.5:7710" --token-env BERTHY_TODO_PROD_TOKEN --save-token
 ```
 
-That prints `added todo/prod at http://10.0.0.5:7710 to … (token in $BERTHY_TODO_PROD_TOKEN)`. Set the variable to the token you already keep, then the other commands work. `berthy context list` shows each context and whether its variable is set (`yes` or `no`), never the token. `berthy context remove --project todo -e prod` removes the entry. `berthy agent token --project todo -e prod --config /etc/berthy/agent.json` prints a `context add` line for another machine; without `--config` the URL is `http://ADDRESS:PORT` for you to fill in.
+That prints `added todo/prod at http://10.0.0.5:7710 to … (token in $BERTHY_TODO_PROD_TOKEN)`. With `--save-token`, it reads the token (hidden at a terminal, or from a pipe) and, when the save succeeds, prints `saved the token of todo/prod in the …`. An unavailable or unconfirmed save keeps the entry, so you can set `$BERTHY_TODO_PROD_TOKEN` without adding it again. Without `--save-token`, set the variable to a token you saved privately. The first machine's credential store is local to it; use `--show-token` when making a new token if you also need a copy. `berthy context list` shows each context, whether its variable is set (`yes` or `no`), and whether a token is `stored`, `not stored`, or `unknown` if the store is unavailable. It never shows the token. `berthy context remove --project todo -e prod` removes the entry and keeps any stored token. Add `--delete-token` to delete the stored token first. `berthy agent token --project todo -e prod --config /etc/berthy/agent.json` prints a `context add` line for another machine; without `--config` the URL is `http://ADDRESS:PORT` for you to fill in.
 
 #### A server set up before projects
 
@@ -518,10 +525,10 @@ aliases:
   weblogs: logs api --role web --follow
 ```
 
-`berthy console -e prod` runs `berthy exec api --role web -e prod -- bin/console`. The CLI expands the alias before it checks any flag, so the agent gets an ordinary request, and the scope, the approval and the audit log are those of the command it stands for. Anything else you type after the name is added at the end: `berthy console -e prod ls` runs `bin/console ls`. The aliases are read for the environment you name with `-e`, so an overlay such as `berthy.prod.yml` can hold them. The `-e`, `--config` and `--manifest-dir` given with an alias are used to find it, and `--manifest-dir` is passed on only to commands that take it.
+`berthy console -e prod` runs `berthy exec api --role web -e prod -- bin/console`. The CLI expands the alias before it checks any flag, so the agent gets an ordinary request, and the scope, the approval and the audit log are those of the command it stands for. Anything else you type after the name is added at the end: `berthy console -e prod ls` runs `bin/console ls`. The aliases are read for the environment you name with `-e`, or else `$BERTHY_ENV` when `-e` is omitted, so an overlay such as `berthy.prod.yml` can hold them. A given `-e` wins. The `-e`, `--config` and `--manifest-dir` given with an alias are used to find it, and `--manifest-dir` is passed on only to commands that take it.
 
 - The words are separated by spaces. Quotes are not interpreted, so a value with a quote is refused.
-- `-e` and `--config` cannot be in an alias. You give the environment on the command line.
+- `-e` and `--config` cannot be in an alias. You give the environment on the command line or with `$BERTHY_ENV`.
 - An alias cannot take the name of a built-in command, such as `deploy` or `ps`. Its first word must be a command that talks to the agent, not another alias, `mcp`, `ui` or `setup`.
 - `berthy config validate` checks the aliases and names the one that is wrong. A manifest holds at most 64.
 - An overlay's alias replaces the base alias of the same name.
@@ -891,6 +898,8 @@ Secrets belong to one environment. `secret` commands need an `admin` token.
 
 #### Set the secrets the first deploy needs
 
+Setup runs this guide at a terminal when it has an admin token. Run `berthy secret set -e prod` at a terminal to generate the declared secrets and enter each remaining value in turn. Enter skips a value; the command exits 1 while anything remains unmet. Add `--manifest-dir DIR` to choose the manifest.
+
 `berthy secret set` takes the value in one of two ways. Typed at a terminal, Berthy asks for the value without showing it, and for some secrets checks it first. Piped, the value is read from standard input, with one trailing newline stripped, and nothing else happens. Type the value yourself; pipe it in CI and scripts. [What Berthy does at a terminal](#what-berthy-does-at-a-terminal) lists each step.
 
 ```bash
@@ -920,11 +929,35 @@ berthy secret generate POSTGRES_PASSWORD -e prod
 
 The agent makes the value from a cryptographic random source and stores it. It is never printed, logged, or shown in a plan or the audit log, and like every secret it cannot be read back. A deploy gives the app the value.
 
-- `--bytes N` sets the length, from 16 to 256. The default is 32.
-- `--format` sets the characters. `hex` is the default and is safe inside a URL. `base64` is URL-safe, without padding. `alnum` is letters and digits, and for `alnum` `--bytes` counts characters.
-- A secret that is already stored is **refused**, because replacing a password that is in use breaks the app. Pass `--replace` to replace it on purpose. Then read [rotating a secret](#rotating-a-secret) first: a database keeps its old password until you change it there too.
+Declare secrets the manifest may generate under `secrets`, and set `min_version` to the release that ships that key so an older agent is refused before the request:
+
+```yaml
+secrets:
+  POSTGRES_PASSWORD:
+    generate:
+      format: hex
+  REDIS_PASSWORD:
+    generate:
+      format: alnum
+      bytes: 20
+```
+
+Without a name, `berthy secret generate -e ENV` generates every declared secret the agent will accept:
+
+```bash
+berthy secret generate -e prod --manifest-dir .
+# generated POSTGRES_PASSWORD (32 bytes, hex)
+# generated REDIS_PASSWORD (20 characters, alnum)
+```
+
+A second run keeps what is already stored (`kept NAME: it is already stored`). Generation runs only for a secret that is not stored and whose apps were never deployed here and whose fixed-name volumes do not already exist; otherwise the line names the app or volume (`not generated NAME: app db was deployed here…`). `--dry-run` prints the same outcomes with `would`. With `--json` the command prints the agent's document (or `{"action":"secret generate declared","secrets":[]}` when nothing is declared), never the sentence.
+
+- `--bytes N` sets the length of a **named** generate, from 16 to 256. The default is 32. A declared secret takes its length from the manifest.
+- `--format` sets the characters of a **named** generate. `hex` is the default and is safe inside a URL. `base64` is URL-safe, without padding. `alnum` is letters and digits, and for `alnum` `--bytes` counts characters.
+- A secret that is already stored is **refused** by the named form, because replacing a password that is in use breaks the app. Pass `--replace` to replace it on purpose. Then read [rotating a secret](#rotating-a-secret) first: a database keeps its old password until you change it there too.
+- An unstored secret is also refused if an app that reads it was deployed here, or if a volume it may use already exists. Set the original value with `secret set`, or use `--replace` on the named form to generate a new one deliberately. From the manifest directory, the command checks its readers and Compose files as well as recorded releases; use `--manifest-dir` to choose that directory.
 - A registry password cannot be generated. Set it with `secret set --registry`.
-- `--dry-run` shows what would happen, and says when a real run would be refused without `--replace`.
+- `--dry-run` shows what would happen. For a named generate, it also says when a real run would be refused without `--replace`.
 
 On a protected environment an AI agent's generate is held for approval, as a `secret set` is. Its plan names the secret and no value.
 
@@ -934,7 +967,7 @@ Check what is stored (names only):
 berthy secret list -e prod
 ```
 
-Remove one with `berthy secret rm <NAME> -e prod` (`delete` also works). Add `--dry-run` to any `secret set` or `secret rm` to see the plan without changing anything. For a registry password, the plan also shows the registry that is kept and the running services that would get the new password ([rotating a secret](#rotating-a-secret)).
+Remove one with `berthy secret rm <NAME> -e prod` (`delete` also works). Add `--dry-run` to `secret set NAME` or `secret rm NAME` to see the plan without changing anything. For a registry password, the plan also shows the registry that is kept and the running services that would get the new password ([rotating a secret](#rotating-a-secret)).
 
 #### Set many secrets at once
 
@@ -967,11 +1000,13 @@ berthy secret list -e prod --manifest-dir ./deploy/prod
 # missing: DATABASE_URL (needed by app api)
 ```
 
-Each `missing:` line is a secret the manifest needs that is not stored, with what needs it. With `--json` the output is one object, with the stored secrets under `secrets` and the missing ones under `missing`.
+Each `missing:` line identifies a secret the manifest needs that is absent or stored with the wrong registry association. Registry mismatches name the stored and needed registries. A `conflict:` line names registries that share a password secret, or a registry and plain readers that share a name; give them separate secret names. With `--json` the output is one object, with the stored secrets under `secrets` and the missing ones under `missing`.
 
 #### What Berthy does at a terminal
 
-When standard input is a terminal, `berthy secret set` does the steps below in this order. A piped value skips all of them: it makes one request, with no guide, no prompt and no check, and the agent keeps the stored registry.
+With no name, `berthy secret set -e prod` first generates declared secrets, then asks for each unmet secret with `Value of NAME (hidden, Enter skips):`. It checks registry passwords and Cloudflare tokens before storing them. A refused value is asked for again; an empty line prints `skipped NAME`. A held request stops the guide. If the agent redacted a required display field of a held secret store, the guide prints the approval ID and expiry with `plan details were redacted`; a held declared generation can still show a plan with masked values. A password stored for the wrong registry is replaced in one set; a registry password needed as a plain secret must first be removed.
+
+When given a name and standard input is a terminal, `berthy secret set` does the steps below in this order. A piped value skips all of them: it makes one request, with no guide, no prompt and no check, and the agent keeps the stored registry.
 
 - **Agent.** First, Berthy asks the agent which secrets it holds. If the agent cannot be reached (`agent connection failed`) or refuses the agent token (for example `agent returned HTTP 401: unauthorized`), the command stops with exit code `1` before the prompt, so you never type a value for nothing.
 - **Replaces.** If NAME is already stored, Berthy says so before the guide. For a registry password it prints `NAME is stored as the password for ghcr.io. The new value replaces it.` For any other secret it prints `NAME is already stored. The new value replaces it.` When `--registry` is omitted, Berthy uses the stored registry for the guide and the check.
@@ -1478,7 +1513,7 @@ commit=$(git rev-parse --verify HEAD)
 
 A clean CI checkout needs no `--commit`: without one, the deploy records `HEAD` of the checkout, which the script passes anyway. If the checkout has local changes to the manifest or the app's Compose file (a generated file, say), the release is recorded as modified, and a protected environment refuses the deploy.
 
-Its inputs are environment variables: `BERTHY_ENV` (`prod`), `BERTHY_CONFIG` (a CLI configuration file), `IMAGE_DIGEST`, `BERTHY_TOKEN`, and optionally `APP` (default `api`) and `BERTHY_BIN`. The CLI configuration in CI names the variable that holds the token:
+Its inputs are environment variables: `BERTHY_ENV` (`prod`), `BERTHY_CONFIG` (a CLI configuration file), `IMAGE_DIGEST`, `BERTHY_TOKEN`, and optionally `APP` (default `api`) and `BERTHY_BIN`. The script still passes `-e "$BERTHY_ENV"`; the CLI now reads the same variable when `-e` is omitted, so a shell that exports `BERTHY_ENV` can drop the flag. The CLI configuration in CI names the variable that holds the token:
 
 ```json
 { "projects": { "todo": { "environments": { "prod": { "url": "http://10.0.0.5:7710", "token_env": "BERTHY_TOKEN" } } } } }
@@ -2479,7 +2514,7 @@ The `--agent` flag marks it as an agent token. It works at once, as for any toke
 
 The agent checks the token and its scope as usual, then **stores the request instead of carrying it out**. Nothing changes: no operation starts and the lock is not taken. The answer is `202` with an approval id.
 
-Held: `deploy`, `apply`, `rollback`, `restart`, `scale`, `exec`, `run`, `prune`, `remove`, `destroy`, `restore`, `ingress apply`, `secret set`, `secret import` and `secret rm`, `lock acquire` and `release`, `backup run`, `job run`, `job cancel`, `cancel`, `state-backup`, `recovery resolve` and `alerts test`.
+Held: `deploy`, `apply`, `rollback`, `restart`, `scale`, `exec`, `run`, `prune`, `remove`, `destroy`, `restore`, `ingress apply`, `secret set`, both forms of `secret generate`, `secret import`, `secret rm`, `lock acquire` and `release`, `backup run`, `job run`, `job cancel`, `cancel`, `state-backup`, `recovery resolve` and `alerts test`.
 
 `key rotate` is not held: an agent token is refused with `an agent token cannot rotate the state key`, whatever its scope, on every environment.
 
@@ -2552,7 +2587,7 @@ Put this in the client's `.mcp.json` (adjust the paths):
 }
 ```
 
-The CLI configuration file is the same one as everywhere (`token_env` names the variable). The token comes from the environment the client runs in. It is never printed and never in a tool result. `--manifest-dir` (default `.`) is where `deploy` reads the manifest and a Compose app's file. The AI agent's `version` for `api` on prod must be a digest.
+The CLI configuration file is the same one as everywhere (`token_env` names the variable). The token comes only from the environment the client runs in; MCP never reads the credential store. Use an agent token made with `berthy token create --agent` so changes can be held for approval. It is never printed and never in a tool result. `--manifest-dir` (default `.`) is where `deploy` reads the manifest and a Compose app's file. The AI agent's `version` for `api` on prod must be a digest.
 
 The tools:
 
@@ -2773,7 +2808,7 @@ The order:
 
    Setup makes the managed parent directories traversable by the `berthy` user, installs your key instead of making one, gives the restored state to that user, installs the agent and starts it on that state. Secrets, history and the audit log are back. If a state directory exists but no key, setup stops and tells you to pass `--key-file`; it never replaces a key that is there.
 
-   **The tokens you made with `berthy token create` are part of the state.** The snapshot holds their digests, so your CI and AI agent tokens work again as soon as the restored agent starts, with the values you already gave them. Only the first `admin` token lives in the agent's configuration, so setup makes a new one: it is printed once, as on the first run. A token whose expiry has passed is still refused.
+   **The tokens you made with `berthy token create` are part of the state.** The snapshot holds their digests, so your CI and AI agent tokens work again as soon as the restored agent starts, with the values you already gave them. Only the first `admin` token lives in the agent's configuration, so setup makes a new one. A confirmed credential-store save suppresses it by default. If the save is unavailable or unconfirmed, setup prints it; `--show-token` prints it as well. A token whose expiry has passed is still refused.
 
 4. **Check:** `berthy doctor -e prod`.
 
@@ -2797,9 +2832,9 @@ Practise this on a test server before you need it.
 
 ### Commands
 
-Every command that talks to an agent needs `-e <env>`. It picks the project with `--project`, else from the manifest directory, else the only project that has that environment. It reads the CLI configuration file that [How to read the commands](#how-to-read-the-commands) describes; `--config <file>` names another. The tables list only the other flags. Most commands take `--json`.
+Every command that talks to an agent needs `-e <env>`, or else `$BERTHY_ENV` when `-e` is not given. A given `-e` wins. It picks the project with `--project`, else from the manifest directory, else the only project that has that environment. It reads the CLI configuration file that [How to read the commands](#how-to-read-the-commands) describes; `--config <file>` names another. The tables list only the other flags. Most commands take `--json`.
 
-A name from the manifest's `aliases` runs the command line it stands for; see [Aliases](#aliases). It is expanded before any flag is checked. Quotes are not interpreted, `-e` and `--config` are not allowed in it, the arguments you give after the name are appended, and the MCP server does not offer it.
+A name from the manifest's `aliases` runs the command line it stands for; see [Aliases](#aliases). It is expanded before any flag is checked. Quotes are not interpreted, `-e` and `--config` are not allowed in it, the environment comes from `-e` or `$BERTHY_ENV` as for other agent commands, the arguments you give after the name are appended, and the MCP server does not offer it.
 
 Scope is the least token that may run the command. `read` < `deploy` < `admin`.
 
@@ -2826,7 +2861,7 @@ Scope is the least token that may run the command. `read` < `deploy` < `admin`.
 
 #### Change
 
-Every one of these also reads `-e`, `--config` and `--json`. **A change command refuses any other flag it does not read.** It exits `2` with `<flag> is not a flag of <command>` before anything is sent. So `berthy approve <id> --dry-run` does not approve for real: it is refused. The last column is the flags each command reads, exactly.
+Every one of these also reads `-e` and `--config`. All accept `--json` except `secret set` with no name. **A change command refuses any other flag it does not read.** It exits `2` with `<flag> is not a flag of <command>` before anything is sent. So `berthy approve <id> --dry-run` does not approve for real: it is refused. The last column is the flags each command reads, exactly.
 
 | Command | Scope | Flags it reads | What it does |
 | --- | --- | --- | --- |
@@ -2852,9 +2887,11 @@ Every one of these also reads `-e`, `--config` and `--json`. **A change command 
 | `remove <app>` | admin | `--dry-run`, `--request-id`, `--volumes`, `--allow-recreate` | Take an app down and remove what Berthy created for it. |
 | `destroy` | admin | `--dry-run`, `--request-id`, `--confirm` (required), `--volumes`, `--allow-recreate`, `--tunnel` | Remove everything Berthy created in the environment. |
 | `secret set <NAME>` | admin | `--dry-run`, `--registry`, `--manifest-dir`; the value is typed at a hidden prompt or piped on standard input | Store a secret. Setting a registry password again keeps its registry and updates the running services. |
-| `secret generate <NAME>` | admin | `--dry-run`, `--replace`, `--bytes` (16 to 256, default 32), `--format` (`hex`, `base64` or `alnum`) | Make a random secret on the server and store it. The value is never shown. A stored name is refused unless `--replace`. A registry password is refused. |
+| `secret set` (no name) | admin | `--manifest-dir`; terminal input required, no `--json` or `--dry-run` | Generate declared secrets and ask for each unmet value. |
+| `secret generate <NAME>` | admin | `--dry-run`, `--replace`, `--bytes` (16 to 256, default 32), `--format` (`hex`, `base64` or `alnum`), `--manifest-dir` | Make a random secret on the server and store it. The value is never shown. A stored name is refused unless `--replace`. A registry password is refused. |
+| `secret generate` (no name) | admin | `--dry-run`, `--manifest-dir` | Generate each secret declared under `secrets` that is not stored and whose apps were never deployed here. Prints one line per secret; `--json` prints the agent's document. |
 | `secret import` | admin | `--dry-run`; standard input is `NAME=value` lines | Store every line of standard input as a secret, all or nothing. A registry password name is refused. |
-| `secret list` | admin | `--manifest-dir` | List secret names (never values). With `--manifest-dir`, also the secrets the manifest needs that have no value. |
+| `secret list` | admin | `--manifest-dir` | List secret names (never values). With `--manifest-dir`, also the secrets the manifest needs that are missing or unusable, including registry association conflicts. |
 | `secret rm <NAME>` (or `delete`) | admin | `--dry-run` | Remove a secret. |
 | `restore <key>` | admin | `--dry-run`, `--request-id`, and `--into` or `--exec` (one is required); with `--exec`: `--service` or `--role`, `--timeout`, and the command after `--` | Restore a backup into a new volume, or stream a command backup into a command. |
 | `state-backup` | admin | none | Snapshot the agent's state now and wait. |
@@ -2870,18 +2907,18 @@ The read commands in the tables above (`wait`, `history`, `audit`, `lock status`
 
 Using `--allow-recreate`, `--adopt`, `--replace-existing` or `--revert-schema` also needs an `admin` token, whatever command carries it.
 
-Flags that belong to one command only: `--revert-schema` (`rollback`), `--commit` (`deploy`, `apply` and `ingress apply`), `--version` (`deploy`), `--to` (`rollback`), `--confirm` and `--tunnel` (`destroy`), `--into` and `--exec` (`restore`), `--registry` (`secret set`), `--replace`, `--bytes` and `--format` (`secret generate`), `--replicas` (`scale`), `--run` (`job logs`), `--volumes` (`remove` and `destroy`), `--all` (`approvals`), `--backup` (`backup list`), `--scope`, `--agent` and `--expires` (`token create`).
+Flags that belong to one command only: `--revert-schema` (`rollback`), `--commit` (`deploy`, `apply` and `ingress apply`), `--version` (`deploy`), `--to` (`rollback`), `--confirm` and `--tunnel` (`destroy`), `--into` and `--exec` (`restore`), `--registry` (`secret set <NAME>`), `--replace`, `--bytes` and `--format` (`secret generate <NAME>`), `--replicas` (`scale`), `--run` (`job logs`), `--volumes` (`remove` and `destroy`), `--all` (`approvals`), `--backup` (`backup list`), `--scope`, `--agent` and `--expires` (`token create`).
 
-`--dry-run` prints the plan and changes nothing. It is available only where the table lists it. `backup run`, `job run`, `job cancel`, `state-backup`, `alerts test`, `approve` and `reject` have no dry run, so they refuse it. `--request-id` is for retries; the CLI makes a fresh one for each command.
+`--dry-run` prints the plan and changes nothing. It is available only where the table lists it. For `secret generate <NAME>`, a dry run also says when a real run would be refused without `--replace`. `backup run`, `job run`, `job cancel`, `state-backup`, `alerts test`, `approve` and `reject` have no dry run, so they refuse it. `--request-id` is for retries; the CLI makes a fresh one for each command.
 
 #### Local (no agent)
 
 | Command | Flags | What it does |
 | --- | --- | --- |
-| `setup` | `-e`, `--project`, `--host`, `--local`, `--listen` (first run), `--config`, `--manifest-dir`, `--network`, `--protected`, `--no-install-docker`, `--dry-run`, `--json`, `--verbose`, `--binary`, `--key-file`, `--new-token` | Prepare a server and install or upgrade the agent, or add a hosted environment to one that already runs, over SSH or on the server. Exit 0 all steps fine, 1 a step failed, 2 wrong command line. Run one setup at a time against a server. |
-| `context add` | `--project`, `-e`, `--url`, `--token-env`, `--config` | Add or replace one environment of one project in the CLI configuration. Prints `added`, `updated`, or `already`. Needs no agent. |
-| `context list` | `--config`, `--json` | One row per context: project, environment, URL, token variable, and `yes` or `no` for whether the variable is set. Never a token. An empty or missing file prints nothing. |
-| `context remove` | `--project`, `-e`, `--config` | Remove one context from the CLI configuration. |
+| `setup` | `-e`, `--project`, `--host`, `--local`, `--listen` (first run), `--config`, `--manifest-dir`, `--network`, `--protected`, `--no-install-docker`, `--dry-run`, `--json`, `--verbose`, `--binary`, `--key-file`, `--new-token`, `--show-token` | Prepare a server and install or upgrade the agent, or add a hosted environment to one that already runs, over SSH or on the server. Exit 0 all steps fine, 1 a step failed, 2 wrong command line. Run one setup at a time against a server. |
+| `context add` | `--project`, `-e`, `--url`, `--token-env`, `--save-token`, `--config` | Add or replace one environment of one project in the CLI configuration. Prints `added`, `updated`, or `already`. With `--save-token`, reads the token and saves it in the credential store. Needs no agent. |
+| `context list` | `--config`, `--json` | One row per context: project, environment, URL, token variable, `yes` or `no` for whether the variable is set, and `stored`, `not stored`, or `unknown` for the stored token. Never a token. An empty or missing file prints nothing. |
+| `context remove` | `--project`, `-e`, `--config`, `--delete-token` | Remove one context from the CLI configuration. `--delete-token` deletes its stored token first. |
 | `version` | `--json` | The CLI's version and platform. |
 | `config validate` | `-e`, `--manifest-dir` | Check the merged manifest. Prints `manifest valid`. |
 | `config show` | `-e`, `--manifest-dir`, `--json`, `--origin` | Print the merged manifest. With `--origin`, one line per value with the file and line that set it, or `default`. |
@@ -2918,6 +2955,7 @@ The manifest is `berthy.yml` plus `berthy.<env>.yml`. Unknown keys are errors. "
 | `network` | name | `<project>-<environment>` | Override the environment network to adopt an existing overlay network. `berthy setup` creates it when it does not exist. |
 | `protected` | boolean | `false` | Protect the environment: digest-only deploys, and changes that an AI agent's token asks for are held for approval. |
 | `registries` | map | none | Registry credentials, by registry host. |
+| `secrets` | map | none | Secrets Berthy may generate, by name. Each must be read by an app. |
 | `apps` | map | required | The apps, by name. At least one. |
 | `jobs` | map | none | Scheduled or on-demand commands, by name. |
 | `backups` | map | none | Volume backups, by name. |
@@ -2939,6 +2977,14 @@ The manifest is `berthy.yml` plus `berthy.<env>.yml`. Unknown keys are errors. "
 | --- | --- | --- | --- |
 | `username` | string | required | The user name for the registry. |
 | `password_secret` | secret name | required | The secret that holds the password. Store it with `berthy secret set NAME --registry <host>`. |
+
+#### `secrets.<SECRET>`
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `generate` | map | required | Generated by `berthy setup` at a terminal and by `berthy secret generate` without a name, only while the secret is not stored and no app that reads it was ever deployed. |
+| `generate.format` | string | required | How the value is encoded: `hex`, URL-safe `base64` without padding, or `alnum`. One of `hex`, `base64`, `alnum`. |
+| `generate.bytes` | integer | `32` | How many random bytes (for hex and base64) or characters (for alnum), from 16 to 256. |
 
 #### `apps.<name>`
 

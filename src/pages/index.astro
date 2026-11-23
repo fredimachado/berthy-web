@@ -125,18 +125,18 @@ const steps = [
     '/#install',
   ],
   [
-    'Set up the server',
-    'with berthy setup over SSH. Look first with --dry-run.',
-    '/docs/prepare-a-server-and-set-it-up/',
-  ],
-  [
     'Write a manifest',
     'in your repository: a base file and one overlay per environment.',
     '/docs/write-the-manifest/',
   ],
   [
-    'Set the secrets',
-    'Values are read from standard input, so they stay out of your shell history.',
+    'Set up the server',
+    'Run berthy setup over SSH from the manifest directory. Preview changes with --dry-run.',
+    '/docs/prepare-a-server-and-set-it-up/',
+  ],
+  [
+    'Fill in any missing secrets',
+    'At a terminal, setup generates eligible secrets and prompts for the rest without echoing them. Run berthy secret set to resume.',
     '/docs/registry-credentials-and-secrets/',
   ],
   [
