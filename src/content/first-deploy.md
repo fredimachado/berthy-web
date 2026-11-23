@@ -10,7 +10,7 @@ Deploy in this order: **redis, postgres, then the API.** The API reads from both
 Every deploy starts the same way: look at the plan.
 
 ```bash title="Terminal" {1}
-berthy deploy redis -e prod --config $CFG --dry-run
+berthy deploy redis -e prod --dry-run
 ```
 
 `--dry-run` prints the plan and acts on nothing. For a Compose app the plan lists the Compose project (`todo-prod-redis`), each service with its action (`create`, `keep`, `recreate` or `remove`) and each volume with `create` or `keep`.
@@ -18,8 +18,8 @@ berthy deploy redis -e prod --config $CFG --dry-run
 Then run it for real:
 
 ```bash
-berthy deploy redis    -e prod --config $CFG
-berthy deploy postgres -e prod --config $CFG
+berthy deploy redis    -e prod
+berthy deploy postgres -e prod
 ```
 
 A Compose app takes **no** `--version`: the version is whatever its Compose file says. The CLI follows the operation until it ends, prints the name of each event as it arrives, then the operation's record:
@@ -51,7 +51,7 @@ Exit code `0` means `succeeded`. Anything else (`failed`, `rolled_back`, `recove
 The prod overlay says `protected: true`. A protected environment **refuses a tag**, even a unique one such as a git SHA, because a tag can be moved. You must give the image's **digest**:
 
 ```bash title="Terminal" {2}
-berthy deploy api -e prod --config $CFG --dry-run \
+berthy deploy api -e prod --dry-run \
   --version sha256:<64 hex characters>
 ```
 
@@ -83,7 +83,7 @@ The dry run for an image app prints the plan as JSON when you add `--json`:
 Notice that the plan shows the image **pinned by digest**. Now deploy it, with the commit that the manifest came from:
 
 ```bash
-berthy deploy api -e prod --config $CFG \
+berthy deploy api -e prod \
   --version sha256:<64 hex characters> \
   --commit "$(git rev-parse HEAD)"
 ```
@@ -105,7 +105,7 @@ berthy deploy api -e prod --config $CFG \
 Once the project is set up, one command deploys every app of the manifest, in the order `depends_on` gives: an app after the apps it depends on, and among the apps that are ready, the first by name.
 
 ```bash
-berthy deploy -e prod --config $CFG --version sha256:<64 hex characters> --dry-run
+berthy deploy -e prod --version sha256:<64 hex characters> --dry-run
 ```
 
 Each app is deployed exactly as `berthy deploy <app>` would, and the output has a header before each one and a summary at the end:

@@ -21,7 +21,7 @@ const installSh = new URL('/install.sh', Astro.site).href;
 const installPs1 = new URL('/install.ps1', Astro.site).href;
 
 const deploy: TerminalLine[] = [
-  { kind: 'cmd', text: 'berthy deploy -e prod --config $CFG --version sha256:<64 hex characters>' },
+  { kind: 'cmd', text: 'berthy deploy -e prod --version sha256:<64 hex characters>' },
   { kind: 'out', parts: [{ text: '==> deploy postgres', tone: 'accent' }] },
   { kind: 'out', text: '...', tone: 'dim' },
   { kind: 'out', parts: [{ text: '==> deploy redis', tone: 'accent' }] },
