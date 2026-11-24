@@ -48,7 +48,7 @@ const opinions = [
   ],
   [
     'Protected environments pin by digest',
-    'A tag can move. On a `protected` environment the agent admits only a `sha256:` digest. A human admin can give a tag in a terminal on a clean checkout; the CLI resolves it, shows the digest and plan, and asks for confirmation. Automation and agent tokens give the digest.',
+    'A tag can move. On a `protected` environment the agent admits only a `sha256:` digest. A human admin can give a tag in a terminal on a clean checkout. The CLI resolves it, shows the digest and plan, and asks for confirmation. Automation and agent tokens give the digest.',
   ],
   [
     "The manifest lives in the app's repository",
@@ -349,12 +349,11 @@ const plain = (text: string) => text.replace(/`/g, '');
   <Container size="narrow" class="pb-8">
     <Terminal title="Scripted deploy (digest), from the user guide" lines={deploy} />
     <p class="text-sm text-fg-muted">
-      The scripted path: one command deploys every app of the manifest in{' '}
-      <code class="font-mono text-fg">depends_on</code> order with an explicit digest. Postgres,
-      redis, then the API. Each is deployed exactly as{' '}
-      <code class="font-mono text-fg">berthy deploy &lt;app&gt;</code> would, and nothing is sent
-      until every app's request is ready. At a terminal a human admin can give a tag instead; CI and
-      agent tokens still give the digest.
+      The scripted path: one command prepares every app's request, then deploys Postgres, Redis, and
+      the API in <code class="font-mono text-fg">depends_on</code> order with an explicit digest. Each
+      is deployed exactly as <code class="font-mono text-fg">berthy deploy &lt;app&gt;</code> would.
+      When it runs, it stops at the first failure. At a terminal a human admin can give a tag
+      instead. CI and agent tokens still give the digest.
     </p>
   </Container>
 
