@@ -1,24 +1,31 @@
 ---
-// Sample docs page: Markdown rendered inside DocsLayout, to compare with Laravel's docs layout.
+// Sample docs page: the real the-first-deploy collection entry inside DocsLayout.
+import { getEntry, render } from 'astro:content';
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import Prose from '../../components/Prose.astro';
-import { Content, getHeadings } from '../../content/first-deploy.md';
 import { getNav } from '../../lib/docs-nav.ts';
 
+const entry = (await getEntry('docs', 'the-first-deploy'))!;
+const { Content, headings } = await render(entry);
+const { title, description, source, sha } = entry.data;
 const nav = await getNav();
 ---
 
 <DocsLayout
-  title="The first deploy"
-  description="Plan, deploy and verify the first release of an app with Berthy."
-  headings={getHeadings()}
+  title={title}
+  description={description}
+  headings={headings}
   current="/design/docs-sample"
   nav={nav}
   noindex
   crumbs={[{ label: 'Design system', href: '/design' }, { label: 'Sample docs page' }]}
-  editPath="docs/user-guide.md"
+  editPath={source}
+  sha={sha}
 >
   <Prose>
+    <h1 data-pagefind-weight="10" data-pagefind-meta="title">
+      {title}
+    </h1>
     <Content />
   </Prose>
 </DocsLayout>

@@ -47,8 +47,8 @@ const opinions = [
     'Berthy never builds an image. It deploys images that already exist in a registry, pinned by digest.',
   ],
   [
-    'Protected environments take digests, not tags',
-    'A tag can move. On a `protected` environment, only a `sha256:` digest is accepted.',
+    'Protected environments pin by digest',
+    'A tag can move. On a `protected` environment the agent admits only a `sha256:` digest. A human admin can give a tag in a terminal on a clean checkout; the CLI resolves it, shows the digest and plan, and asks for confirmation. Automation and agent tokens give the digest.',
   ],
   [
     "The manifest lives in the app's repository",
@@ -87,6 +87,11 @@ const features = [
     'history',
     'Release history and rollback',
     'Each release records the commit and the requested tag, and `berthy rollback` goes back to any recorded release.',
+  ],
+  [
+    'tags',
+    'List tags and promote',
+    '`berthy versions` lists registry tags. `berthy promote` deploys what another environment already runs, after confirmation.',
   ],
   [
     'workflow',
@@ -145,7 +150,7 @@ const steps = [
   ],
   [
     'Deploy',
-    'On a protected environment, give the image digest CI printed, not a tag.',
+    'In CI, give the digest the build printed. At a terminal, a human admin can give a tag on a clean checkout, review the digest and confirm. Use berthy versions to list tags, or berthy promote to ship what another environment already runs.',
     '/docs/the-first-deploy/',
   ],
 ] as const;
@@ -342,12 +347,14 @@ const plain = (text: string) => text.replace(/`/g, '');
 
   <!-- A real session -->
   <Container size="narrow" class="pb-8">
-    <Terminal title="berthy deploy, from the user guide" lines={deploy} />
+    <Terminal title="Scripted deploy (digest), from the user guide" lines={deploy} />
     <p class="text-sm text-fg-muted">
-      One command deploys every app of the manifest in{' '}
-      <code class="font-mono text-fg">depends_on</code> order: postgres, redis, then the API. Each
-      is deployed exactly as <code class="font-mono text-fg">berthy deploy &lt;app&gt;</code> would,
-      and nothing is sent until every app's request is ready.
+      The scripted path: one command deploys every app of the manifest in{' '}
+      <code class="font-mono text-fg">depends_on</code> order with an explicit digest. Postgres,
+      redis, then the API. Each is deployed exactly as{' '}
+      <code class="font-mono text-fg">berthy deploy &lt;app&gt;</code> would, and nothing is sent
+      until every app's request is ready. At a terminal a human admin can give a tag instead; CI and
+      agent tokens still give the digest.
     </p>
   </Container>
 
