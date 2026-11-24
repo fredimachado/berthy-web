@@ -226,6 +226,7 @@ The steps run in this order. Each one checks first and only acts when something 
 | `cli_config` | Adds the environment to the CLI configuration file: the one `--config` names, or else the one the CLI finds (see [How to read the commands](#how-to-read-the-commands)). Without any location it is skipped, with a hint of the entry to add yourself. |
 | `cli_token` | Saves the new admin token in this machine's credential store, or shows it when the save is unavailable or unconfirmed. |
 | `verify` | Runs `doctor` on the new agent (see below). |
+| `cli_key` | Saves a copy of the encryption key on this machine, in `~/.berthy/keys` (see [Save three things](#save-three-things)). With `--local` it is skipped. |
 
 Every step ends with one status, shown as a glyph: `✓` for `ok` (nothing to change) and `changed`, `·` for `would_change` (dry run), `–` for `skipped` and `✖` for `failed`. This is a real first run, on a test server with another environment name and address. The names are the guide's (`prod`, `ops@10.0.0.5`, `10.0.0.5:7710`, network `todo-prod`), and the details are what setup prints:
 
@@ -244,20 +245,20 @@ Every step ends with one status, shown as a glyph: `✓` for `ok` (nothing to ch
 ✓ cli_config  wrote prod at http://10.0.0.5:7710 to config.json (token in $BERTHY_TODO_PROD_TOKEN)
 – cli_token   no credential store on this machine: the token is shown below; set it in $BERTHY_TODO_PROD_TOKEN
 ✓ verify      agent v0.1.0-me, 9 of 9 checks ok
+✓ cli_key     saved a copy of the encryption key in /home/me/.berthy/keys/berthy.todo.prod.91c0aa11bb22cc33.key
 setup of todo/prod on ops@10.0.0.5: done
 
 admin token for todo/prod (shown once, store it now): <token>
 
 next steps:
-  1. run the command from a private folder, such as your home folder (cd ~), and keep the file private
-  2. in a POSIX shell (macOS, Linux, or Git Bash/WSL on Windows): (umask 077; set -C; ssh 'ops@10.0.0.5' 'sudo cat /var/lib/berthy/environments/todo/prod/key' > todo.prod.key.20261122T153012Z)
-  3. store the admin token above, and set it in $BERTHY_TODO_PROD_TOKEN when you run berthy
-  4. set the secrets the manifest names: berthy secret set NAME -e prod --project todo --config /home/me/.config/berthy/config.json
-  5. apply the managed ingress: berthy ingress apply -e prod --project todo --config /home/me/.config/berthy/config.json
-  6. deploy every app in depends_on order, with --version APP=REF for each image app: berthy deploy -e prod --project todo --config /home/me/.config/berthy/config.json --version APP=REF (or one app: berthy deploy APP -e prod --project todo --config /home/me/.config/berthy/config.json --version REF)
+  1. keep the copy of the encryption key that setup saved in /home/me/.berthy/keys/berthy.todo.prod.91c0aa11bb22cc33.key, and store another in a password manager or vault: without the key, the secrets of a lost server are gone
+  2. store the admin token above, and set it in $BERTHY_TODO_PROD_TOKEN when you run berthy
+  3. set the secrets the manifest names: berthy secret set NAME -e prod --config /home/me/.config/berthy/config.json
+  4. apply the managed ingress: berthy ingress apply -e prod --config /home/me/.config/berthy/config.json
+  5. deploy every app in depends_on order, with --version APP=REF for each image app: berthy deploy -e prod --config /home/me/.config/berthy/config.json --version APP=REF (or one app: berthy deploy APP -e prod --config /home/me/.config/berthy/config.json --version REF)
 ```
 
-This sample is a non-terminal run with no credential store, so the token comes **after** the step lines. When the store confirms the save, setup prints the token only if you pass `--show-token`. An unconfirmed save may still finish later, so setup shows the token to avoid losing it. Setup prints the next steps only after a successful run that is not a dry run. The ingress item appears only when the manifest declares managed ingress. The next steps name `--config` only when you gave it to setup. Without it, the commands find the CLI configuration on their own. (The sample above is from a run on a test server, shortened where its details differ.)
+This sample is a non-terminal run with no credential store, so the token comes **after** the step lines. When the store confirms the save, setup prints the token only if you pass `--show-token`. An unconfirmed save may still finish later, so setup shows the token to avoid losing it. Setup prints the next steps only after a successful run that is not a dry run. The ingress item appears only when the manifest declares managed ingress. The next steps name `--config` only when you gave it to setup. Without it, the commands find the CLI configuration on their own. The post-setup secret, ingress and deploy commands name `--project` only when setup ran without a manifest. With one, each of those commands reads the project from `berthy.yml` in the directory you run it from, or in `--manifest-dir`. A `--local` key-copy handoff still names `--project` even when a manifest supplied the project. Relative `--manifest-dir` and `--config` resolve from the directory where you ran setup, so return there before the other commands. When the key copy could not be saved, `cli_key` says `not saved` with the reason and the first next step says what to do instead. The exit code stays 0. (The sample above is from a run on a test server, shortened where its details differ.)
 
 After a successful text-mode setup with a loaded manifest, terminal input and an available admin token, setup runs the secrets guide after the summary and any token, before printing next steps. It generates declared secrets and asks for the remaining values without echoing them; Enter skips a value. When the guide finishes, next steps name any secrets still missing. If it cannot finish, setup keeps the manual secret commands. A pipe or `--json` skips the guide and prints those commands. A dry run also skips the guide. The guide does not change the setup exit status.
 
@@ -268,17 +269,18 @@ A **second run** keeps the existing token and shows no new token. With a stored 
 ✓ token       the tokens of /etc/berthy/agent.json are kept
 ✓ cli_token   the admin token is in the Secret Service
 ✓ verify      agent v0.1.0-me, 9 of 9 checks ok
+✓ cli_key     the copy of the encryption key is in /home/me/.berthy/keys/berthy.todo.prod.91c0aa11bb22cc33.key
 ```
 
-If you want a machine-readable result, add `--json`. It prints one object and nothing else. An unstored token is in it as `"token"`, and the next steps as `"next_steps"`. A confirmed save adds `"token_stored": true` and omits `token` unless `--show-token` was given:
+If you want a machine-readable result, add `--json`. It prints one object and nothing else. An unstored token is in it as `"token"`, and the next steps as `"next_steps"`. A confirmed save adds `"token_stored": true` and omits `token` unless `--show-token` was given. `key_copy` is the path of the key copy on this machine. It is absent when none was saved:
 
 ```json
 {"project": "todo", "environment": "prod", "target": "ops@10.0.0.5", "dry_run": false, "ok": true,
  "steps": [{"step": "docker", "status": "ok", "detail": "Docker 29.9.3, running, enabled"}],
- "token": "<token>", "next_steps": ["..."]}
+ "token": "<token>", "key_copy": "/home/me/.berthy/keys/berthy.todo.prod.91c0aa11bb22cc33.key", "next_steps": ["..."]}
 ```
 
-Exit codes: `0` all steps fine, `1` a step failed (the output names it), `2` the command line is wrong. If a later step fails after the configuration holding the token went live, setup prints the token if the save was not confirmed or `--show-token` was given. If activation is interrupted while installing or rolling back the configuration and setup cannot tell which configuration remains, the failed run also shows the token in case the server kept it. The token is not saved or treated as live in that case.
+Exit codes: `0` all steps fine, `1` a step failed (the output names it), `2` the command line is wrong. If a later step fails after the configuration holding the token went live, setup prints the token if the save was not confirmed or `--show-token` was given. If activation is interrupted while installing or rolling back the configuration and setup cannot tell which configuration remains, the failed run also shows the token in case the server kept it. The token is not saved or treated as live in that case. A key copy that could not be saved does not change the exit code.
 
 #### Where the binary comes from
 
@@ -304,14 +306,15 @@ A development build on macOS or Windows has no release to download, so give it `
 
    Setup writes the token's digest into `/etc/berthy/agent.json`. Every other token you make through the agent (step 6). Lost it? Run setup again with `--new-token`. It adds another `admin` token to the file and leaves the others alone.
 
-2. **The encryption key.** It lives on the server at `/var/lib/berthy/environments/todo/prod/key` (32 bytes). It seals every secret in the agent's state. The agent never uploads it. If the server dies and you do not have it, the secrets are gone. Copy it somewhere off the server, as the next steps say:
+2. **The encryption key.** It lives on the server at `/var/lib/berthy/environments/todo/prod/key` (32 bytes). It seals every secret in the agent's state. The agent never uploads it. If the server dies and you do not have it, the secrets are gone.
 
-   ```bash
-   (umask 077; set -C; ssh 'ops@10.0.0.5' 'sudo cat /var/lib/berthy/environments/todo/prod/key' > todo.prod.key.20261122T153012Z)
-   chmod 600 todo.prod.key.20261122T153012Z
-   ```
+   After a successful remote setup (`--host`), setup saves a copy as `~/.berthy/keys/berthy.todo.prod.91c0aa11bb22cc33.key`. On Windows that is `%USERPROFILE%\.berthy\keys\`. Only your account can use the folder and the file. The last part of the name before `.key` is the key's ID. `berthy key rotate` and `state-restore` name keys by that ID. Setup never replaces a copy. After a key rotation, the next setup run saves the new key beside the old one. Keep each copy as long as you keep a state snapshot made with that key. The copy is on one machine. Store another in a password manager or your provisioning tool's vault.
 
-   Keep `todo.prod.key.20261122T153012Z` in a password manager or your provisioning tool's vault.
+   With `--local`, setup saves none. It tells you to run setup for that same project and environment over SSH from your own machine, with `--project` and the same build that is installed on the server: the same released version of the CLI, or the same custom Linux binary given with `--binary`. First resolve any interrupted key rotation on that server. If you are not sure about the build or the rotation, check before you copy.
+
+   If `cli_key` says `not saved`, do what the first next step says: fix the reason, then run the same `berthy setup` command again, from this same directory and with the same environment; leave out `--new-token` if that run used it, because this run already added that admin token. If it says a folder is not private, look at it first with `ls -ld ~/.berthy ~/.berthy/keys` (Windows: `icacls`). Only when it is a real directory that you own, and not a link, make it private on POSIX with `chmod 700 <that directory>`, or move that owned folder aside and let setup create a new one. On macOS an extra access entry shows as `+` in `ls -le`.
+
+   If `cli_key` says the server did not hand over the key, no copy was saved. A server running an older `--binary` cannot hand it over. Upgrading that agent is an ordinary upgrade that you plan on its own, and only when no hosted environment on the server has an unresolved key rotation failure. If one is known, diagnose and fix it before any restart.
 
    If the copy leaks, or someone who had it leaves, replace the key with [`berthy key rotate`](#rotate-the-encryption-key).
 
@@ -329,9 +332,20 @@ A development build on macOS or Windows has no release to download, so give it `
 
    The default variable name is `BERTHY_<PROJECT>_<ENVIRONMENT>_TOKEN`. An environment that already has a `token_env` keeps it, and other environments in the file are kept as they are. You can edit this file by hand: unknown keys are refused. The commands find this file on their own, so `--config` is only needed for another file.
 
+#### Copying by hand
+
+Setup never prints a command that copies the key file. When you still need one (for example after `key rotate`, or when you prefer a second off-machine copy), use a POSIX shell. Two things first: `<key>.next` must not exist beside the key on the server, and a sudo that records command output will record the key.
+
+```bash
+(umask 077; set -C; ssh 'ops@10.0.0.5' 'sudo cat /var/lib/berthy/environments/todo/prod/key' > ~/todo.prod.key.20261122T153012Z)
+chmod 600 ~/todo.prod.key.20261122T153012Z
+```
+
+Keep the file in a password manager or your provisioning tool's vault as well.
+
 #### Setup is safe to run again
 
-A second run repairs what is missing and changes nothing else. It never replaces the encryption key, the tokens or the agent's state, and it never touches a running app. Run one `berthy setup` at a time against a server: two runs that add different environments can read the same `agent.json` and lose one entry. (A setup lock is planned: #53.)
+A second run repairs what is missing and changes nothing else. It never replaces the encryption key, the tokens or the agent's state, it never replaces a key copy on your machine, and it never touches a running app. Run one `berthy setup` at a time against a server: two runs that add different environments can read the same `agent.json` and lose one entry. (A setup lock is planned: #53.)
 
 Running it with a **newer CLI**, or with `--binary`, **upgrades the agent**. Only the agent restarts. Apps keep running. The previous binary and configuration are kept for one generation, and **if the new agent does not answer, setup puts the previous binary and configuration back** and restarts the old one, with the agent's last log lines in the error. On a first install there is nothing to put back, so setup stops the service and leaves it stopped.
 
@@ -2425,7 +2439,7 @@ Recovery starts from the backup's capture time. Anything written after the last 
 
 #### Back up the agent's state
 
-The agent's SQLite file holds its releases, history, audit log, checks and **secrets**. The agent can upload a copy of it daily. Secrets in it are sealed, and the key that opens them is never read or uploaded. Add this to the prod overlay:
+The agent's SQLite file holds its releases, history, audit log, checks and **secrets**. The agent can upload a copy of it daily. That upload is a SQLite snapshot that contains sealed secret values, with a separate metadata sidecar. Secret values stay sealed, and the key file is not uploaded, but SQLite metadata such as operation actors and secret names can still be read without the key. Remote setup's `cli_key` reads the configured key under the existing reader rules. Add this to the prod overlay:
 
 ```yaml
 state_backup:
@@ -2471,17 +2485,21 @@ berthy key rotate -e prod
 ```text
 rotated the state key: 12 values resealed, key 3f2a9c01e4b7d210 replaces 91c0aa11bb22cc33
 the previous key is kept on the server until the next state snapshot succeeds
-run the command from a private folder, such as your home folder (cd ~), and keep the file private
-in a POSIX shell (macOS, Linux, or Git Bash/WSL on Windows): (umask 077; set -C; sudo cat /var/lib/berthy/environments/todo/prod/key > todo.prod.key.20261122T153012Z)
+run berthy setup for this environment again from your machine: it saves the new key in its key folder
+or, on the server, in a POSIX shell, copy it by hand and then move the file to another machine: (umask 077; set -C; sudo cat /var/lib/berthy/environments/todo/prod/key > ~/todo.prod.key.20261122T153012Z)
 ```
 
-The agent makes a new key on the server, seals every secret, held request and diagnostic again in one transaction, and records `key_rotate` in the audit log with the token that asked. It never prints a key: the IDs only name keys. Copy the new key off the server as the last line says, and replace your old copy.
+The agent makes a new key on the server, seals every secret, held request and diagnostic again in one transaction, and records `key_rotate` in the audit log with the token that asked. It never prints a key: the IDs only name keys. Then run `berthy setup` again from your machine: it saves the new key in `~/.berthy/keys`, beside the copy of the old one. The last line is the way to copy it by hand (see [Copying by hand](#copying-by-hand)). Keep the old copy as long as you keep a state snapshot from before the rotation, because that snapshot opens only with the old key.
 
 The old key stays on the server as `/var/lib/berthy/environments/todo/prod/key.prev` until the next state snapshot succeeds with the new key. Then the agent deletes it. Until then `berthy doctor` shows a `state_key` check. Without a `state_backup` block no snapshot runs, so the previous key stays; delete it yourself when you no longer need it.
 
+If the rotation ends with `key_rotation_incomplete`, the agent uses the new key but its key files are not in place yet. Setup then saves no copy. On the server, find and fix what kept the agent from putting its key files in place (for example a leftover `<key>.prev.tmp` it cannot remove, a full disk, or wrong ownership). Do not restart the agent before that: it finishes the rotation when it starts, and it cannot start while the cause remains. Then restart it and run the same `berthy setup` command again, from this same directory and with the same environment; leave out `--new-token` if that run used it, because this run already added that admin token. If that earlier command used `--key-file`, leave `--key-file` out of this retry only: after the agent settles the rotation the saved file can still hold the old key.
+
+Never replace the key file of a running agent: rotate through the agent. Setup copies the key file, and cannot tell that it was swapped underneath a running agent.
+
 The rotation is refused with a conflict while an operation runs or the deploy lock is held. `--dry-run` checks the same and says how many values would be sealed again, and changes nothing. A crash in the middle leaves a state that one of the two keys opens completely, and the agent settles the key files when it starts again. `berthy setup --key-file` never replaces the key of a server: rotate through the agent.
 
-A snapshot taken before the rotation needs the old key. `state-restore` names the key it needs before it downloads anything: `the snapshot needs key 91c0aa11bb22cc33; prod.key is key 3f2a9c01e4b7d210`.
+A snapshot taken before the rotation needs the old key. `state-restore` names the key it needs before it downloads anything: `the snapshot needs key 91c0aa11bb22cc33; berthy.todo.prod.3f2a9c01e4b7d210.key is key 3f2a9c01e4b7d210`.
 
 ---
 
@@ -2774,16 +2792,16 @@ The order:
 
 1. **Provision** a new server with the same private address (or a new one, and change `--listen` and the CLI configuration). Berthy does not do this part: the server, its users, its firewall and its VPN are yours.
 
-2. **Restore the agent's state.** It needs neither an agent nor the old server. Put the Berthy binary and your saved key (`todo.prod.key.20261122T153012Z`, from step 1) on the new server (mode `0600`), find a snapshot (`todo/prod/berthy-state/<time>.db` in the bucket), and run, as root:
+2. **Restore the agent's state.** It needs neither an agent nor the old server. Put the Berthy binary and your saved key (`berthy.todo.prod.91c0aa11bb22cc33.key`, from `~/.berthy/keys` in step 1) on the new server (mode `0600`), find a snapshot (`todo/prod/berthy-state/<time>.db` in the bucket), and run, as root:
 
    ```bash
    install -d -m 0700 /var/lib/berthy
-   chmod 600 todo.prod.key.20261122T153012Z
+   chmod 600 berthy.todo.prod.91c0aa11bb22cc33.key
    BERTHY_S3_ACCESS_KEY=<access key> BERTHY_S3_SECRET_KEY=<secret key> \
      berthy state-restore --project todo \
        --endpoint https://s3.example.com --bucket acme-todo-backups --region eu-central-1 \
        --object todo/prod/berthy-state/20261116T031700Z.db \
-       --out /var/lib/berthy/environments/todo/prod/state --key-file ./todo.prod.key.20261122T153012Z
+       --out /var/lib/berthy/environments/todo/prod/state --key-file ./berthy.todo.prod.91c0aa11bb22cc33.key
    ```
 
    | Flag | Meaning |
@@ -2803,8 +2821,10 @@ The order:
 
    ```bash
    berthy setup -e prod --host ops@10.0.0.5 --listen 10.0.0.5:7710 \
-     --key-file ./todo.prod.key.20261122T153012Z --config ~/.config/berthy/config.json
+     --key-file ~/.berthy/keys/berthy.todo.prod.91c0aa11bb22cc33.key --config ~/.config/berthy/config.json
    ```
+
+   Automatic remote setup wraps the key for the `cli_key` download. This rebuild's `--key-file` path is different: setup streams the key bytes on stdin over SSH, and sudo input recording on the server can capture them.
 
    Setup makes the managed parent directories traversable by the `berthy` user, installs your key instead of making one, gives the restored state to that user, installs the agent and starts it on that state. Secrets, history and the audit log are back. If a state directory exists but no key, setup stops and tells you to pass `--key-file`; it never replaces a key that is there.
 
@@ -3275,7 +3295,7 @@ Besides these, Berthy creates Docker objects: Swarm services named `<project>-<e
 - **Plain HTTP over a private network.** The agent has no TLS. It relies on the private network for encryption and authenticates every request with a token. Do not expose its port to the internet.
 - **No proxy and no certificates.** Berthy ships no reverse proxy. Public traffic enters through Cloudflare Tunnel (managed) or an app you run yourself.
 - **Limited secret interpolation.** A template (`env.template`) joins secrets into one value with `${NAME}` only: no defaults, no nesting, no URL encoding and no references to variables. Berthy can make a random secret on the server with `berthy secret generate`. See step 2 and [generating a random secret](#generate-a-random-secret).
-- **Secrets live in the agent's store.** There is no external secret manager. Back up the encryption key yourself.
+- **Secrets live in the agent's store.** There is no external secret manager. Remote `berthy setup` saves a copy of the encryption key under `~/.berthy/keys`; store another in a password manager or vault.
 - **No `berthy update`.** Upgrade the agent by running `berthy setup` again with a newer CLI.
 - **No starter manifest.** There is no command that writes one. Start from `examples/todo` and check it with `berthy config validate`.
 - **No web UI, and no long-term logs or metrics.** Berthy keeps the last hour of metrics in memory and stores no logs. Export metrics over OpenTelemetry and send logs to a backend of your choice.
