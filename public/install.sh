@@ -6,9 +6,9 @@
 #
 # Settings are environment variables. Put them on the `sh` side of the pipe:
 #
-#   curl -fsSL https://berthy.pages.dev/install.sh | BERTHY_VERSION=v0.6.0 sh
+#   curl -fsSL https://berthy.pages.dev/install.sh | BERTHY_VERSION=v0.8.0 sh
 #
-#   BERTHY_VERSION      A release tag, for example v0.6.0. Default: the latest release.
+#   BERTHY_VERSION      A release tag, for example v0.8.0. Default: the latest release.
 #   BERTHY_INSTALL_DIR  Where the binary goes. Default: /usr/local/bin, with sudo when needed.
 #   BERTHY_RELEASE_URL  A mirror of the releases, laid out as <url>/<version>/<file>, the same
 #                       variable `berthy setup` reads. Needs BERTHY_VERSION.

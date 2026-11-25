@@ -5,9 +5,9 @@
 #
 # Settings are environment variables. Set them before the command:
 #
-#   $env:BERTHY_VERSION = 'v0.6.0'; irm https://berthy.pages.dev/install.ps1 | iex
+#   $env:BERTHY_VERSION = 'v0.8.0'; irm https://berthy.pages.dev/install.ps1 | iex
 #
-#   BERTHY_VERSION         A release tag, for example v0.6.0. Default: the latest release.
+#   BERTHY_VERSION         A release tag, for example v0.8.0. Default: the latest release.
 #   BERTHY_INSTALL_DIR     Where berthy.exe goes. Default: %LOCALAPPDATA%\Programs\berthy.
 #   BERTHY_NO_MODIFY_PATH  Set to 1 to leave your PATH alone.
 #   BERTHY_RELEASE_URL     A mirror of the releases, laid out as <url>/<version>/<file>, the same

@@ -117,7 +117,7 @@ const features = [
   [
     'server',
     'Guided server setup',
-    'Installs Docker, Swarm and the agent over SSH. Setup saves the admin token in your OS credential store when available.',
+    'Installs Docker, Swarm and the agent over SSH. Setup reads the server from the manifest and saves the admin token in your OS credential store when available.',
   ],
   [
     'terminal',
@@ -140,7 +140,7 @@ const steps = [
   ],
   [
     'Set up the server',
-    'Run berthy setup over SSH from the manifest directory. Preview changes with --dry-run.',
+    'Name the server once in the manifest (servers, its SSH destination and private address), then run berthy setup -e prod from that directory — no --host or --listen. Preview with --dry-run.',
     '/docs/prepare-a-server-and-set-it-up/',
   ],
   [
