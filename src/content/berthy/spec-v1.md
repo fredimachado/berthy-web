@@ -121,7 +121,7 @@ The agent keeps what it runs from, so schedules and checks keep running between 
 The manifest has two scopes, and the agent stores each one on its own.
 
 - **App scope.** `apps.<name>`, the `jobs` and `backups` that name the app, and the `probes` whose `service.app` is the app. A deploy of the app applies it. It is stored with the app's release, so a rollback of the app takes it back with the app and changes nothing of any other app.
-- **Environment scope.** Everything else: `project`, `network`, `protected`, `registries`, `secrets`, `destinations`, `state_backup`, `telemetry`, `peers`, `alerts`, the probes that name no app, `min_version`, `timezone`, `aliases` and `ingress`. The agent stores it as one record per environment, with the commit it came from and whether that checkout had local changes. Every deploy that records a release writes it, in the same transaction as the release: an image app, a Compose app and an adoption. `berthy apply` writes it too, and deploys nothing. A rollback, the ingress connector's own deploy and a schema revert never write it. The `ingress` block is stored here like the rest; `ingress apply` still does the Cloudflare work.
+- **Environment scope.** Everything else: `project`, `network`, `protected`, `servers`, `registries`, `secrets`, `destinations`, `state_backup`, `telemetry`, `peers`, `alerts`, the probes that name no app, `min_version`, `timezone`, `aliases` and `ingress`. The agent stores it as one record per environment, with the commit it came from and whether that checkout had local changes. Every deploy that records a release writes it, in the same transaction as the release: an image app, a Compose app and an adoption. `berthy apply` writes it too, and deploys nothing. A rollback, the ingress connector's own deploy and a schema revert never write it. The `ingress` block is stored here like the rest; `ingress apply` still does the Cloudflare work.
 
 The agent runs from the environment record plus, for each app that has an applied release, the app scope of that release. No release of any app decides for the others. So a rollback of one app changes that app's jobs, backups and probes and nothing else, and the alerts, peers, probes of the environment and the other settings stay as the last deploy or `apply` left them. A deploy of an app applies the environment scope of its manifest and the app scope of that app only: a changed job of another app takes effect with that app's next deploy. A deploy from an older commit applies that commit's environment scope, as any deploy does; `berthy apply` from a newer checkout puts the settings right without a deploy.
 
@@ -164,6 +164,7 @@ All desired configuration lives in the application's repository as one base mani
 - A top-level `min_version` (a release such as `0.9.0`) is the oldest Berthy release the manifest works with. The CLI and the agent refuse a manifest that needs a newer release than theirs. `config validate` checks its format and the CLI's own release, without contacting a server.
 - A top-level `timezone` (an IANA name such as `Europe/Lisbon`, default `UTC`) is the zone every `schedule` of the manifest is read in: jobs, backups and the state backup. `config validate` refuses a name the binary does not know, with the file and line. It is part of the environment scope. See "Scheduled container commands".
 - A top-level `secrets` map declares secrets Berthy may generate (`secrets.<SECRET>.generate`), each with a required `format` (`hex`, `base64` or `alnum`) and optional `bytes` (16 to 256, default 32). Each name must be a secret name other than `TUNNEL_TOKEN`, must be read by an app (`env.secret` or `env.template`), and must not be needed by a registry, destination, telemetry, alerts or ingress. An overlay merges the map; a `null` removes one secret. It is part of the environment scope. An agent refuses a key it does not know, so this key needs the release that ships it: upgrade the agent with `berthy setup` before the first deploy of a manifest that uses it, and set `min_version` to that release.
+- A top-level `servers` map names the environment's servers (`servers.<name>.ssh`, optional `servers.<name>.address`). The name follows the same pattern as `project` and `network`. `ssh` is required: `USER@HOST` or `HOST` (an SSH config alias works), and never starts with `-`. `address`, when set, is one IP of the server (not `0.0.0.0` or `::`); when setup picks that server from the manifest (no `--host`, no `--local`), a first install listens on `<address>:7710` unless `--listen` says otherwise (`--host` and `--local` still need `--listen`), and a later run refuses when the agent listens on another address. An overlay merges the map by name; a `null` removes one entry. `berthy setup` connects to the only server, or to the one `--server <name>` names, and refuses with the list of names when there are several and no `--server`. `--host` sets up any destination instead. It is part of the environment scope, so `apply` lists its changes. An agent refuses a key it does not know, so this key needs the release that ships it: upgrade the agent with `berthy setup` before the first deploy of a manifest that uses it, and set `min_version` to that release (`ssh` shipped in `0.7.0`; `address` needs `0.8.0`).
 
 The examples in this spec use two environments named `dev` and `prod`. Names and values are placeholders.
 
@@ -303,7 +304,7 @@ It works in one of two ways.
 
 | Where it runs | How | Used for |
 | --- | --- | --- |
-| From a laptop | `--host <user>@<server>` connects over SSH | Setting up a remote server by hand |
+| From a laptop | `--host <user>@<server>` connects over SSH, or the destination comes from the manifest's `servers` (the only entry, or `--server <name>`) | Setting up a remote server by hand |
 | On the server | `--local` runs the same steps directly | Provisioning tools and images that already carry the binary |
 
 ### What it does
@@ -360,21 +361,24 @@ Each step has a name (`connect`, `check`, `docker`, `swarm`, `network`, `user`, 
 
 ### What it reads from the manifest
 
-Run from the application's repository, setup reads two values from the merged manifest for the environment.
+Run from the application's repository, setup reads these values from the merged manifest for the environment.
 
 | Value | Used for | Without a manifest |
 | --- | --- | --- |
 | `project` | The project of the hosted environment | `--project <name>` (required when there is no manifest) |
 | `network` | The shared network to create; defaults to `<project>-<environment>` | `--network <name>` |
 | `protected` | Marking the hosted environment as protected from its first start | `--protected` |
+| `servers` | The SSH destination to connect to: the only entry, or the one `--server <name>` names | `--host <user>@<server>` |
+| `servers.<name>.address` | When setup picks this server from the manifest, the address the agent listens on at its first install (`<address>:7710`) | `--listen <address>:<port>` |
 
 ### Options
 
 | Option | Meaning |
 | --- | --- |
-| `--host <user>@<server>` | Set up a remote server over SSH |
-| `--local` | Set up the server the command runs on |
-| `--listen <address>:<port>` | The private address the agent's API listens on. Required on the first run; later runs keep the agent's own. It must be one specific address of the server, not `0.0.0.0` or `::`, and a loopback, private or VPN address. |
+| `--host <user>@<server>` | Set up a remote server over SSH, at a destination the manifest does not need to name |
+| `--server <name>` | Set up the server of that name from the manifest's `servers` |
+| `--local` | Set up the server the command runs on. Use at most one of `--host`, `--server` and `--local` |
+| `--listen <address>:<port>` | The private address the agent's API listens on. Required on the first run unless setup picks the server from the manifest and that entry has `address` (`--host` and `--local` still need it); later runs keep the agent's own. It must be one specific address of the server, not `0.0.0.0` or `::`, and a loopback, private or VPN address. |
 | `--project <name>` | The project, required when the directory has no manifest |
 | `--network <name>` | The shared network, when the directory has no manifest |
 | `--protected` | Mark the environment as protected, when the directory has no manifest |
